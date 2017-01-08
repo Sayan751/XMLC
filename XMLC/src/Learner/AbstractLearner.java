@@ -1,6 +1,5 @@
 package Learner;
 
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
@@ -12,12 +11,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.math.Stats;
 import com.google.common.primitives.Ints;
 
 import Data.AVPair;
@@ -29,9 +30,10 @@ import IO.DataManager;
 import threshold.ThresholdTuner;
 import util.IoUtils;
 import util.Constants.ThresholdTuningDataKeys;
+import util.Constants.LearnerDefaultValues;
+import util.Constants.LearnerInitProperties;
 
-
-public abstract class AbstractLearner implements Serializable{
+public abstract class AbstractLearner implements Serializable {
 	private static final long serialVersionUID = -1399552145906714507L;
 
 	private static Logger logger = LoggerFactory.getLogger(AbstractLearner.class);
@@ -39,33 +41,59 @@ public abstract class AbstractLearner implements Serializable{
 	/**
 	 * Number of labels.
 	 */
-	protected int m = 0; 
+	protected int m = 0;
 	/**
 	 * Number of features.
 	 */
-	protected int d = 0; 
+	protected int d = 0;
 
+	protected int numberOfTrainingInstancesSeen = 0;
 
 	transient protected Properties properties = null;
 	protected double[] thresholds = null;
-	
+
 	protected ThresholdTuner thresholdTuner;
 
+	/**
+	 * Holds fmeasures per training instance.
+	 * 
+	 * TODO remove this variable and store the fmeasure in data store.
+	 */
+	protected List<Double> fmeasures;
+	/**
+	 * Holds prequential (before training) fmeasures per training instance.
+	 * 
+	 * TODO remove this variable and store the prequential fmeasure in data
+	 * store.
+	 */
+	protected List<Double> prequentialFmeasures;
+
+	protected final boolean isToComputeFmeasureOnTopK;
+
+	/**
+	 * Default {@code k} is 'topK' based methods.
+	 */
+	protected final int defaultK;
+
 	// abstract functions
-	public abstract void allocateClassifiers( DataManager data );
-	public abstract void train( DataManager data );
-	//public abstract Evaluator test( AVTable data );
+	public abstract void allocateClassifiers(DataManager data);
+
+	public abstract void train(DataManager data);
+
+	// public abstract Evaluator test( AVTable data );
 	public abstract double getPosteriors(AVPair[] x, int label);
 
-	public void savemodel(String fname ) throws IOException{
+	public void savemodel(String fname) throws IOException {
 		IoUtils.serialize(this, Paths.get(fname));
 	}
-	public static AbstractLearner loadmodel(String fname ) throws FileNotFoundException, ClassNotFoundException, IOException{
+
+	public static AbstractLearner loadmodel(String fname)
+			throws FileNotFoundException, ClassNotFoundException, IOException {
 		return (AbstractLearner) IoUtils.deserialize(Paths.get(fname));
 	}
 
-	public int getPrediction(AVPair[] x, int label){
-		if ( this.thresholds[label] <= getPosteriors(x, label) ) {
+	public int getPrediction(AVPair[] x, int label) {
+		if (this.thresholds[label] <= getPosteriors(x, label)) {
 			return 1;
 		} else {
 			return 0;
@@ -76,60 +104,66 @@ public abstract class AbstractLearner implements Serializable{
 		logger.info("Number of labels: " + this.m);
 		logger.info("Number of features: " + this.d);
 	}
-	
-	public static AbstractLearner learnerFactory( Properties properties ) {
+
+	public static AbstractLearner learnerFactory(Properties properties) {
 		AbstractLearner learner = null;
-		
+
 		String learnerName = properties.getProperty("Learner");
 		logger.info("--> Learner: {}", learnerName);
-		
-		if (learnerName.compareTo( "Constant" ) == 0)
+
+		if (learnerName.compareTo("Constant") == 0)
 			learner = new ConstantLearner(properties);
 		else if (learnerName.compareTo("PLT") == 0)
 			learner = new PLT(properties);
 		else if (learnerName.compareTo("MLL") == 0)
 			learner = new MLL(properties);
 		else if (learnerName.compareTo("DeepPLT") == 0)
-			learner = new DeepPLT(properties);		
+			learner = new DeepPLT(properties);
 		else {
 			System.err.println("Unknown learner");
 			System.exit(-1);
 		}
-				
-		return learner;		
-				
-	}
-		
-//	public void tuneThreshold( ThresholdTuning t, DataManager data ){
-//		this.setThresholds(t.validate(data, this));
-//	}
 
-	public void setThresholds(double[] t) {		
-		for(int j = 0; j < t.length; j++) {
+		return learner;
+
+	}
+
+	// public void tuneThreshold( ThresholdTuning t, DataManager data ){
+	// this.setThresholds(t.validate(data, this));
+	// }
+
+	public void setThresholds(double[] t) {
+		for (int j = 0; j < t.length; j++) {
 			this.thresholds[j] = t[j];
-		}		
+		}
 	}
 
-	public void setThresholds(double t) {		
-		for(int j = 0; j < this.thresholds.length; j++) {
+	public void setThresholds(double t) {
+		for (int j = 0; j < this.thresholds.length; j++) {
 			this.thresholds[j] = t;
-		}		
+		}
 	}
-	
+
 	public void setThreshold(int label, double t) {
 		this.thresholds[label] = t;
-	}	
-	
-	public AbstractLearner(Properties properties){
-		this.properties = properties;		
 	}
 
+	public AbstractLearner(Properties properties) {
+		this.properties = properties;
+
+		isToComputeFmeasureOnTopK = Boolean
+				.parseBoolean(properties.getProperty(LearnerInitProperties.isToComputeFmeasureOnTopK,
+						Boolean.toString(LearnerDefaultValues.isToComputeFmeasureOnTopK)));
+
+		defaultK = Integer.parseInt(properties.getProperty(LearnerInitProperties.defaultK,
+				Integer.toString(LearnerDefaultValues.defaultK)));
+	}
 
 	// naive implementation checking all labels
 	public HashSet<Integer> getPositiveLabels(AVPair[] x) {
 		HashSet<Integer> positiveLabels = new HashSet<Integer>();
 
-		for( int i = 0; i < this.m; i++ ) {
+		for (int i = 0; i < this.m; i++) {
 			if (this.getPosteriors(x, i) >= this.thresholds[i]) {
 				positiveLabels.add(i);
 			}
@@ -137,91 +171,89 @@ public abstract class AbstractLearner implements Serializable{
 
 		return positiveLabels;
 	}
-	
+
 	// naive implementation checking all labels
 	public PriorityQueue<ComparablePair> getPositiveLabelsAndPosteriors(AVPair[] x) {
 		PriorityQueue<ComparablePair> positiveLabels = new PriorityQueue<>();
 
-		for( int i = 0; i < this.m; i++ ) {
+		for (int i = 0; i < this.m; i++) {
 			double post = getPosteriors(x, i);
-			if ( this.thresholds[i] <= post ){
-				positiveLabels.add(new ComparablePair(post, i ));
+			if (this.thresholds[i] <= post) {
+				positiveLabels.add(new ComparablePair(post, i));
 			}
 		}
 
 		return positiveLabels;
 	}
-	
+
 	public int[] getTopkLabels(AVPair[] x, int k) {
 		PriorityQueue<ComparablePair> pq = new PriorityQueue<ComparablePair>();
-		
-		for( int i = 0; i < this.m; i++ ) {
+
+		for (int i = 0; i < this.m; i++) {
 			double post = this.getPosteriors(x, i);
 			pq.add(new ComparablePair(post, i));
 		}
-		
-		
+
 		int[] labels = new int[k];
-		for( int i=0; i<k; i++ ){
+		for (int i = 0; i < k; i++) {
 			ComparablePair p = pq.poll();
 			labels[i] = p.getValue();
 		}
-		
+
 		return labels;
 	}
-	
-	
-//	public void outputPosteriors( String fname, DataManager data )
-//	{
-//		try{
-//			logger.info( "Saving posteriors (" + fname + ")..." );
-//			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-//			          new FileOutputStream(fname)));
-//			    
-//			for(int i = 0; i< data.n; i++ ){
-//				for( int j = 0; j < this.m; j++ ){
-//					writer.write( j + ":" + this.getPosteriors(data.x[i], j) + " " );
-//				}
-//				writer.write( "\n" );
-//			}
-//						
-//			writer.close();
-//			logger.info( "Done." );
-//		} catch (IOException e) {
-//			logger.info(e.getMessage());
-//		}
-//		
-//	}
-	
+
+	// public void outputPosteriors( String fname, DataManager data )
+	// {
+	// try{
+	// logger.info( "Saving posteriors (" + fname + ")..." );
+	// BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+	// new FileOutputStream(fname)));
+	//
+	// for(int i = 0; i< data.n; i++ ){
+	// for( int j = 0; j < this.m; j++ ){
+	// writer.write( j + ":" + this.getPosteriors(data.x[i], j) + " " );
+	// }
+	// writer.write( "\n" );
+	// }
+	//
+	// writer.close();
+	// logger.info( "Done." );
+	// } catch (IOException e) {
+	// logger.info(e.getMessage());
+	// }
+	//
+	// }
+
 	public HashSet<EstimatePair> getSparseProbabilityEstimates(AVPair[] x, double threshold) {
-		
+
 		HashSet<EstimatePair> positiveLabels = new HashSet<EstimatePair>();
-		
-		for(int i = 0; i < this.m; i++) {
+
+		for (int i = 0; i < this.m; i++) {
 			double p = getPosteriors(x, i);
-			if (p >= threshold) 
+			if (p >= threshold)
 				positiveLabels.add(new EstimatePair(i, p));
 		}
-		
+
 		return positiveLabels;
 	}
-	
+
 	public TreeSet<EstimatePair> getTopKEstimates(AVPair[] x, int k) {
 		TreeSet<EstimatePair> positiveLabels = new TreeSet<EstimatePair>();
-		
-		for(int i = 0; i < this.m; i++) {
-			double p = getPosteriors(x, i);			 
+
+		for (int i = 0; i < this.m; i++) {
+			double p = getPosteriors(x, i);
 			positiveLabels.add(new EstimatePair(i, p));
 		}
-		
-		while( positiveLabels.size()>=k){			
+
+		while (positiveLabels.size() >= k) {
 			positiveLabels.pollLast();
 		}
-					
+
 		return positiveLabels;
-		
+
 	}
-		
+
 	public Properties getProperties() {
 		return properties;
 	}
@@ -229,7 +261,7 @@ public abstract class AbstractLearner implements Serializable{
 	public int getNumberOfLabels() {
 		return this.m;
 	}
-	
+
 	/**
 	 * Modifies thresholds as provided by {@code this.thresholdTuner}
 	 * 
@@ -253,8 +285,9 @@ public abstract class AbstractLearner implements Serializable{
 	}
 
 	/**
-	 * Note: This is a potential candidate to move to AbstractLearner; subject to feasibility
-	 * check.
+	 * Note: This is a potential candidate to move to AbstractLearner; subject
+	 * to feasibility check.
+	 * 
 	 * @param data
 	 * @return
 	 */
@@ -279,5 +312,27 @@ public abstract class AbstractLearner implements Serializable{
 		}
 		return retVal;
 	}
-	
+
+	public double getAverageFmeasure(boolean isPrequential) {
+		// TODO return the value from data store if available.
+		return Stats.meanOf(isPrequential ? prequentialFmeasures : fmeasures);
+	}
+
+	protected double getFmeasureForInstance(Instance instance) {
+		Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
+				? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
+				: getPositiveLabels(instance.x);
+
+		Set<Integer> intersection = new HashSet<Integer>(Ints.asList(instance.y));
+		intersection.retainAll(predictedPositives);
+
+		return (2.0 * intersection.size()) / (instance.y.length + predictedPositives.size());
+	}
+
+	/**
+	 * @return the numberOfTrainingInstancesSeen
+	 */
+	public int getNumberOfTrainingInstancesSeen() {
+		return numberOfTrainingInstancesSeen;
+	}
 }

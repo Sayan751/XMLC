@@ -298,4 +298,10 @@ public class MLL extends AbstractLearner {
 		return posterior;
 
 	}
+
+	@Override
+	public double getAverageFmeasure(boolean isPrequential) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }

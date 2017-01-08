@@ -176,6 +176,11 @@ public class PLT extends AbstractLearner {
 
 	@Override
 	public void train(DataManager data) {
+		// prequential evaluation.
+		evaluate(data, true);
+
+		int oldT = T;
+
 		for (int ep = 0; ep < this.epochs; ep++) {
 
 			logger.info("#############--> BEGIN of Epoch: {} ({})", (ep + 1), this.epochs);
@@ -190,47 +195,28 @@ public class PLT extends AbstractLearner {
 
 				for (int j = 0; j < instance.y.length; j++) {
 
-					int treeIndex = this.tree.getTreeIndex(instance.y[j]); // +
-																			// traindata.m
-																			// -
-																			// 1;
+					int treeIndex = this.tree.getTreeIndex(instance.y[j]);
 					positiveTreeIndices.add(treeIndex);
 
 					while (treeIndex > 0) {
-
-						treeIndex = (int) this.tree.getParent(treeIndex); // Math.floor((treeIndex
-																			// -
-																			// 1)/2);
+						treeIndex = (int) this.tree.getParent(treeIndex);
 						positiveTreeIndices.add(treeIndex);
-
 					}
 				}
 
 				if (positiveTreeIndices.size() == 0) {
-
 					negativeTreeIndices.add(0);
-
 				} else {
-
 					for (int positiveNode : positiveTreeIndices) {
-
 						if (!this.tree.isLeaf(positiveNode)) {
-
 							for (int childNode : this.tree.getChildNodes(positiveNode)) {
-
 								if (!positiveTreeIndices.contains(childNode)) {
 									negativeTreeIndices.add(childNode);
 								}
-
 							}
-
 						}
-
 					}
 				}
-
-				// logger.info("Negative tree indices: " +
-				// negativeTreeIndices.toString());
 
 				for (int j : positiveTreeIndices) {
 
@@ -257,10 +243,16 @@ public class PLT extends AbstractLearner {
 					logger.info("\t --> Epoch: " + (ep + 1) + " (" + this.epochs + ")" + "\tSample: " + this.T);
 				}
 			}
+			if (ep == 0) {
+				numberOfTrainingInstancesSeen += (this.T - oldT);
+			}
+
 			data.reset();
 
 			logger.info("--> END of Epoch: " + (ep + 1) + " (" + this.epochs + ")");
 		}
+
+		evaluate(data, false);
 
 		int zeroW = 0;
 		double sumW = 0;
@@ -285,7 +277,15 @@ public class PLT extends AbstractLearner {
 		}
 	}
 
-	
+	private void evaluate(DataManager data, boolean isPrequential) {
+		while (data.hasNext() == true) {
+			if (isPrequential)
+				prequentialFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
+			else
+				fmeasures.add(getFmeasureForInstance(data.getNextInstance()));
+		}
+		data.reset();
+	}
 
 	protected void updatedPosteriors(AVPair[] x, int label, double inc) {
 
@@ -604,5 +604,4 @@ public class PLT extends AbstractLearner {
 
 		return positiveLabels;
 	}
-
 }

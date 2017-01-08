@@ -55,4 +55,10 @@ public class ConstantLearner extends AbstractLearner {
 		// TODO Auto-generated method stub
 		return 0;
 	}
+
+	@Override
+	public double getAverageFmeasure(boolean isPrequential) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }

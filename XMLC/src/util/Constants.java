@@ -18,9 +18,28 @@ public class Constants {
 		public static final String trueLabels = "trueLabels";
 		public static final String predictedLabels = "predictedLabels";
 	}
-	
-	public static class OFO {
-		public static final int defaultaSeed = 1;
-		public static final int defaultbSeed = 100;
+
+	public static class OFODefaultValues {
+		public static final int aSeed = 50;
+		public static final int bSeed = 100;
+	}
+
+	public static class PLTEnsembleDefaultValues {
+		public static final double epsilon = 0.1;
+		public static final double retainmentFraction = 0.1;
+		public static final int minTraingInstances = 1000;
+	}
+
+	public static class LearnerDefaultValues {
+		public static final boolean isToComputeFmeasureOnTopK = true;
+		public static final int defaultK = 5;
+	}
+
+	public static class LearnerInitProperties {
+		public static final String individualPLTProperties = "individualPLTProperties";
+		public static final String pltEnsembleEpsilon = "pltEnsembleEpsilon";
+		public static final String pltEnsembleRetainmentFraction = "pltEnsembleRetainmentFraction";
+		public static final String isToComputeFmeasureOnTopK = "isToComputeFmeasureOnTopK";
+		public static final String defaultK = "defaultK";
 	}
 }

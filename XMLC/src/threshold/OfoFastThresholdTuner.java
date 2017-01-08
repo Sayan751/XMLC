@@ -9,7 +9,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import util.Constants.OFO;
+import util.Constants.OFODefaultValues;
 import util.Constants.ThresholdTuningDataKeys;
 
 /**
@@ -45,10 +45,10 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 			bThresholdDenominators = new int[numberOfLabels];
 
 			int aSeed = thresholdTunerInitOption != null && thresholdTunerInitOption.aSeed != null
-					? thresholdTunerInitOption.aSeed : OFO.defaultaSeed;
+					? thresholdTunerInitOption.aSeed : OFODefaultValues.aSeed;
 
 			int bSeed = thresholdTunerInitOption != null && thresholdTunerInitOption.bSeed != null
-					? thresholdTunerInitOption.bSeed : OFO.defaultbSeed;
+					? thresholdTunerInitOption.bSeed : OFODefaultValues.bSeed;
 
 			Arrays.fill(aThresholdNumerators, aSeed);
 			Arrays.fill(bThresholdDenominators, bSeed);
