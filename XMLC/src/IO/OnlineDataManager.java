@@ -245,5 +245,17 @@ public class OnlineDataManager extends DataManager {
 			this.getNextInstance();
 		}
 	}
+
+	@Override
+	public void loadNext(int count) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 	
 }

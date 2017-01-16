@@ -27,6 +27,9 @@ import Data.ComparablePair;
 import Data.EstimatePair;
 import Data.Instance;
 import IO.DataManager;
+import event.args.InstanceProcessedEventArgs;
+import event.listeners.IFmeasureObserver;
+import event.listeners.IInstanceProcessedListener;
 import threshold.ThresholdTuner;
 import util.IoUtils;
 import util.Constants.ThresholdTuningDataKeys;
@@ -57,14 +60,11 @@ public abstract class AbstractLearner implements Serializable {
 	/**
 	 * Holds fmeasures per training instance.
 	 * 
-	 * TODO remove this variable and store the fmeasure in data store.
 	 */
 	protected List<Double> fmeasures;
 	/**
 	 * Holds prequential (before training) fmeasures per training instance.
 	 * 
-	 * TODO remove this variable and store the prequential fmeasure in data
-	 * store.
 	 */
 	protected List<Double> prequentialFmeasures;
 
@@ -74,6 +74,13 @@ public abstract class AbstractLearner implements Serializable {
 	 * Default {@code k} is 'topK' based methods.
 	 */
 	protected final int defaultK;
+
+	transient protected Set<IInstanceProcessedListener> instanceProcessedListeners;
+	transient protected IFmeasureObserver fmeasureObserver;
+
+	protected final boolean fmeasureObserverAvailable;
+
+	private Object id;
 
 	// abstract functions
 	public abstract void allocateClassifiers(DataManager data);
@@ -157,6 +164,15 @@ public abstract class AbstractLearner implements Serializable {
 
 		defaultK = Integer.parseInt(properties.getProperty(LearnerInitProperties.defaultK,
 				Integer.toString(LearnerDefaultValues.defaultK)));
+
+		fmeasureObserver = (IFmeasureObserver) properties.get(LearnerInitProperties.fmeasureObserver);
+
+		fmeasureObserverAvailable = fmeasureObserver != null;
+
+		instanceProcessedListeners = new HashSet<IInstanceProcessedListener>();
+
+		if (fmeasureObserverAvailable)
+			addInstanceProcessedListener(fmeasureObserver);
 	}
 
 	// naive implementation checking all labels
@@ -314,11 +330,11 @@ public abstract class AbstractLearner implements Serializable {
 	}
 
 	public double getAverageFmeasure(boolean isPrequential) {
-		// TODO return the value from data store if available.
-		return Stats.meanOf(isPrequential ? prequentialFmeasures : fmeasures);
+		return fmeasureObserverAvailable ? fmeasureObserver.getAverageFmeasure(this, isPrequential)
+				: Stats.meanOf(isPrequential ? prequentialFmeasures : fmeasures);
 	}
 
-	protected double getFmeasureForInstance(Instance instance) {
+	protected double getFmeasureForInstance(Instance instance, boolean isToPublishFmeasure, boolean isPrequential) {
 		Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
 				? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
 				: getPositiveLabels(instance.x);
@@ -326,7 +342,22 @@ public abstract class AbstractLearner implements Serializable {
 		Set<Integer> intersection = new HashSet<Integer>(Ints.asList(instance.y));
 		intersection.retainAll(predictedPositives);
 
-		return (2.0 * intersection.size()) / (instance.y.length + predictedPositives.size());
+		double retVal = (2.0 * intersection.size()) / (instance.y.length + predictedPositives.size());
+
+		if (isToPublishFmeasure) {
+			InstanceProcessedEventArgs args = new InstanceProcessedEventArgs();
+			args.instance = instance;
+			args.fmeasure = retVal;
+			args.isPrequential = isPrequential;
+
+			onInstanceProcessed(args);
+		}
+
+		return retVal;
+	}
+
+	protected double getFmeasureForInstance(Instance instance) {
+		return getFmeasureForInstance(instance, false, false);
 	}
 
 	/**
@@ -334,5 +365,40 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	public int getNumberOfTrainingInstancesSeen() {
 		return numberOfTrainingInstancesSeen;
+	}
+
+	public void addInstanceProcessedListener(IInstanceProcessedListener listener) {
+		instanceProcessedListeners.add(listener);
+	}
+
+	public void removeInstanceProcessedListener(IInstanceProcessedListener listener) {
+		instanceProcessedListeners.remove(listener);
+	}
+
+	private void onInstanceProcessed(InstanceProcessedEventArgs args) {
+		instanceProcessedListeners.stream()
+				.forEach(listener -> listener.onInstanceProcessed(this, args));
+	}
+
+	protected void evaluate(DataManager data, boolean isPrequential) {
+		while (data.hasNext() == true) {
+			if (fmeasureObserverAvailable) {
+				getFmeasureForInstance(data.getNextInstance(), true, isPrequential);
+			} else {
+				if (isPrequential)
+					prequentialFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
+				else
+					fmeasures.add(getFmeasureForInstance(data.getNextInstance()));
+			}
+		}
+		data.reset();
+	}
+
+	public Object getId() {
+		return id;
+	}
+
+	public void setId(Object id) {
+		this.id = id;
 	}
 }

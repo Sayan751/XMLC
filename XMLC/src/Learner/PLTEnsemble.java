@@ -21,10 +21,12 @@ import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.math.Stats;
-
 import Data.AVPair;
 import IO.DataManager;
+import event.args.PLTCreationEventArgs;
+import event.args.PLTDiscardedEventArgs;
+import event.listeners.IPLTCreatedListener;
+import event.listeners.IPLTDiscardedListener;
 import util.Constants;
 import util.Constants.LearnerInitProperties;
 
@@ -35,6 +37,9 @@ public class PLTEnsemble extends AbstractLearner {
 	private List<PLT> plts;
 	private int currentNumberOfLabels = 0;
 	private Map<PLT, Double> averageFmeasureCache;
+
+	transient private Set<IPLTCreatedListener> pltCreatedListeners;
+	transient private Set<IPLTDiscardedListener> pltDiscardedListeners;
 
 	/**
 	 * Slack variable for fmeasure comparison.
@@ -54,8 +59,12 @@ public class PLTEnsemble extends AbstractLearner {
 
 	public PLTEnsemble(Properties properties) {
 		super(properties);
+
 		plts = new ArrayList<PLT>();
 		averageFmeasureCache = new HashMap<PLT, Double>();
+		pltCreatedListeners = new HashSet<IPLTCreatedListener>();
+		pltDiscardedListeners = new HashSet<IPLTDiscardedListener>();
+
 		epsilon = Double.parseDouble(
 				properties.getProperty(LearnerInitProperties.pltEnsembleEpsilon,
 						Double.toString(Constants.PLTEnsembleDefaultValues.epsilon)));
@@ -64,6 +73,7 @@ public class PLTEnsemble extends AbstractLearner {
 						Double.toString(Constants.PLTEnsembleDefaultValues.retainmentFraction)));
 		minTraingInstances = Integer.parseInt(properties.getProperty(LearnerInitProperties.pltEnsembleEpsilon,
 				Integer.toString(Constants.PLTEnsembleDefaultValues.minTraingInstances)));
+
 	}
 
 	@Override
@@ -77,19 +87,23 @@ public class PLTEnsemble extends AbstractLearner {
 		Properties pltProperties = (Properties) properties.get(LearnerInitProperties.individualPLTProperties);
 		pltProperties.put(LearnerInitProperties.isToComputeFmeasureOnTopK, isToComputeFmeasureOnTopK);
 		pltProperties.put(LearnerInitProperties.defaultK, defaultK);
+		pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
 
 		PLT plt = new PLT(pltProperties);
 		plt.allocateClassifiers(data);
 		plts.add(plt);
 		currentNumberOfLabels = data.getNumberOfLabels();
+		onPLTCreated(plt);
 	}
 
 	@Override
 	public void train(final DataManager data) {
 
 		double fmeasureOld = getAverageFmeasure(false);
-		int soFar = plts.get(0)
-				.getNumberOfTrainingInstancesSeen();
+		int soFar = plts.size() > 0
+				? plts.get(0)
+						.getNumberOfTrainingInstancesSeen()
+				: 0;
 
 		if (data.getNumberOfLabels() > currentNumberOfLabels)
 			addNewPLT(data);
@@ -109,8 +123,9 @@ public class PLTEnsemble extends AbstractLearner {
 			logger.warn("Threds interrupted. Tasks took more than " + Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
 					+ " to finish.");
 		}
-		numberOfTrainingInstancesSeen += (plts.get(0)
-				.getNumberOfTrainingInstancesSeen() - soFar);
+
+		int numberOfTrainingInstancesInThisSession = plts.get(0)
+				.getNumberOfTrainingInstancesSeen() - soFar;
 
 		averageFmeasureCache.clear();
 		averageFmeasureCache = plts.stream()
@@ -118,12 +133,13 @@ public class PLTEnsemble extends AbstractLearner {
 						plt -> plt,
 						plt -> plt.getAverageFmeasure(false)));
 
-		double fmeasureNew = getTempFMeasureOnData(data);
+		double fmeasureNew = getTempFMeasureOnData(data, fmeasureOld);
 		if (fmeasureNew < fmeasureOld && Math.abs(fmeasureNew - fmeasureOld) > epsilon) {
 			discardLearners(fmeasureOld, fmeasureNew, data);
 		}
 
 		evaluate(data, false);
+		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
 	}
 
 	/**
@@ -137,7 +153,7 @@ public class PLTEnsemble extends AbstractLearner {
 	 * @param fmeasureNew
 	 * @param data
 	 */
-	private void discardLearners(double fmeasureOld, double fmeasureNew, DataManager data) {
+	private void discardLearners(final double fmeasureOld, double fmeasureNew, DataManager data) {
 		List<PLT> scoredLearners = getScoredLearners().entrySet()
 				.stream()
 				.sorted(Entry.<PLT, Double>comparingByValue())
@@ -153,9 +169,10 @@ public class PLTEnsemble extends AbstractLearner {
 			if (plt.numberOfTrainingInstancesSeen > minTraingInstances) {
 				plts.remove(plt);
 				averageFmeasureCache.remove(plt);
+				onPLTDiscarded(plt);
 			}
 
-			fmeasureNew = getTempFMeasureOnData(data);
+			fmeasureNew = getTempFMeasureOnData(data, fmeasureOld);
 		}
 	}
 
@@ -175,23 +192,15 @@ public class PLTEnsemble extends AbstractLearner {
 				- ((double) plt.getNumberOfTrainingInstancesSeen() / getNumberOfTrainingInstancesSeen());
 	}
 
-	private void evaluate(DataManager data, boolean isPrequential) {
-		while (data.hasNext() == true) {
-			if (isPrequential)
-				prequentialFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
-			else
-				fmeasures.add(getFmeasureForInstance(data.getNextInstance()));
-		}
-		data.reset();
-	}
-
-	private double getTempFMeasureOnData(DataManager data) {
-		List<Double> resultantFmeasures = new ArrayList<Double>(fmeasures);
+	private double getTempFMeasureOnData(DataManager data, double fmeasureOld) {
+		List<Double> resultantFmeasures = new ArrayList<Double>();
 		while (data.hasNext() == true) {
 			resultantFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
 		}
 		data.reset();
-		return Stats.meanOf(resultantFmeasures);
+		return (resultantFmeasures.stream()
+				.mapToDouble(d -> d)
+				.sum() + fmeasureOld) / (resultantFmeasures.size() + numberOfTrainingInstancesSeen);
 	}
 
 	@Override
@@ -324,5 +333,29 @@ public class PLTEnsemble extends AbstractLearner {
 	public double getPosteriors(AVPair[] x, int label) {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	public void addPLTCreatedListener(IPLTCreatedListener listener) {
+		pltCreatedListeners.add(listener);
+	}
+
+	public void removePLTCreatedListener(IPLTCreatedListener listener) {
+		pltCreatedListeners.remove(listener);
+	}
+
+	private void onPLTCreated(PLT plt) {
+		PLTCreationEventArgs args = new PLTCreationEventArgs();
+		args.plt = plt;
+
+		pltCreatedListeners.stream()
+				.forEach(listener -> listener.onPLTCreated(this, args));
+	}
+
+	private void onPLTDiscarded(PLT plt) {
+		PLTDiscardedEventArgs args = new PLTDiscardedEventArgs();
+		args.discardedPLT = plt;
+
+		pltDiscardedListeners.stream()
+				.forEach(listener -> listener.onPLTDiscarded(this, args));
 	}
 }

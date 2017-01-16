@@ -41,5 +41,8 @@ public class Constants {
 		public static final String pltEnsembleRetainmentFraction = "pltEnsembleRetainmentFraction";
 		public static final String isToComputeFmeasureOnTopK = "isToComputeFmeasureOnTopK";
 		public static final String defaultK = "defaultK";
+		public static final String fmeasureObserver = "fmeasureObserver";
+		public static final String tunerType = "tunerType";
+		public static final String tunerInitOption = "tunerInitOption";
 	}
 }

@@ -11,6 +11,11 @@ import Data.Instance;
 public abstract class DataManager {
 	static Logger logger = LoggerFactory.getLogger(DataManager.class);
 	
+	public void loadNext() {
+		loadNext(1);
+	}
+	public abstract void loadNext(int count);
+	
 	public abstract boolean hasNext();
 	public abstract Instance getNextInstance();
 	public abstract int getNumberOfFeatures();
@@ -19,6 +24,11 @@ public abstract class DataManager {
 	public abstract void reset();
 	public abstract DataManager getCopy();
 	public void close() {};
+	
+	public boolean markProcessed(Instance instance) {
+		return markProcessed(instance, -1.0, -1.0);
+	}
+	public abstract boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure);
 	
 	public static DataManager managerFactory(String filename, String datamanagertype ) {
 		DataManager datamanager = null;

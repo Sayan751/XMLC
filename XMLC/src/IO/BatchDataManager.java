@@ -67,4 +67,16 @@ public class BatchDataManager extends DataManager {
 	public DataManager getCopy() {
 		return new BatchDataManager(this.data);		
 	}
+
+	@Override
+	public void loadNext(int count) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

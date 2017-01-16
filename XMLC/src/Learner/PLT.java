@@ -276,17 +276,7 @@ public class PLT extends AbstractLearner {
 			tuneThreshold(data);
 		}
 	}
-
-	private void evaluate(DataManager data, boolean isPrequential) {
-		while (data.hasNext() == true) {
-			if (isPrequential)
-				prequentialFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
-			else
-				fmeasures.add(getFmeasureForInstance(data.getNextInstance()));
-		}
-		data.reset();
-	}
-
+	
 	protected void updatedPosteriors(AVPair[] x, int label, double inc) {
 
 		this.learningRate = this.gamma / (1 + this.gamma * this.lambda * this.Tarray[label]);
