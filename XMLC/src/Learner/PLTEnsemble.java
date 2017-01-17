@@ -87,7 +87,8 @@ public class PLTEnsemble extends AbstractLearner {
 		Properties pltProperties = (Properties) properties.get(LearnerInitProperties.individualPLTProperties);
 		pltProperties.put(LearnerInitProperties.isToComputeFmeasureOnTopK, isToComputeFmeasureOnTopK);
 		pltProperties.put(LearnerInitProperties.defaultK, defaultK);
-		pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
+		if (fmeasureObserverAvailable)
+			pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
 
 		PLT plt = new PLT(pltProperties);
 		plt.allocateClassifiers(data);
@@ -251,7 +252,7 @@ public class PLTEnsemble extends AbstractLearner {
 			ConcurrentHashMap<Integer, Set<PLT>> labelLearnerMap = new ConcurrentHashMap<Integer, Set<PLT>>();
 
 			IntStream.range(0, predictions.size())
-					.parallel()
+					// .parallel()
 					.forEach(index -> Arrays
 							.stream(predictions.get(index))
 							.forEach(label -> {

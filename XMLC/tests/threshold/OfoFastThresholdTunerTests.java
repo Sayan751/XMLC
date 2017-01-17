@@ -273,7 +273,7 @@ public class OfoFastThresholdTunerTests {
 		int totalNumberOfLabels = 10;
 		target = new OfoFastThresholdTuner(totalNumberOfLabels, null);
 		double[] expected = new double[totalNumberOfLabels];
-		Arrays.fill(expected, (1 / 100.0));
+		Arrays.fill(expected, (50 / 100.0));
 
 		// act
 		double[] actual = target.getTunedThresholds(null);

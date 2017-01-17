@@ -342,7 +342,7 @@ public abstract class AbstractLearner implements Serializable {
 		Set<Integer> intersection = new HashSet<Integer>(Ints.asList(instance.y));
 		intersection.retainAll(predictedPositives);
 
-		double retVal = (2.0 * intersection.size()) / (instance.y.length + predictedPositives.size());
+		double retVal = (2.0 * intersection.size()) / (double) (instance.y.length + predictedPositives.size());
 
 		if (isToPublishFmeasure) {
 			InstanceProcessedEventArgs args = new InstanceProcessedEventArgs();
