@@ -158,12 +158,15 @@ public abstract class AbstractLearner implements Serializable {
 	public AbstractLearner(Properties properties) {
 		this.properties = properties;
 
-		isToComputeFmeasureOnTopK = Boolean
-				.parseBoolean(properties.getProperty(LearnerInitProperties.isToComputeFmeasureOnTopK,
-						Boolean.toString(LearnerDefaultValues.isToComputeFmeasureOnTopK)));
-
-		defaultK = Integer.parseInt(properties.getProperty(LearnerInitProperties.defaultK,
-				Integer.toString(LearnerDefaultValues.defaultK)));
+		Object tempPropValue = properties.get(LearnerInitProperties.isToComputeFmeasureOnTopK);
+		isToComputeFmeasureOnTopK = tempPropValue != null
+				? (Boolean) tempPropValue
+				: LearnerDefaultValues.isToComputeFmeasureOnTopK;
+				
+		tempPropValue = properties.get(LearnerInitProperties.defaultK);
+		defaultK = tempPropValue != null
+				? (Integer) tempPropValue
+				: LearnerDefaultValues.defaultK;
 
 		fmeasureObserver = (IFmeasureObserver) properties.get(LearnerInitProperties.fmeasureObserver);
 
@@ -381,6 +384,7 @@ public abstract class AbstractLearner implements Serializable {
 	}
 
 	protected void evaluate(DataManager data, boolean isPrequential) {
+		data.reset();
 		while (data.hasNext() == true) {
 			if (fmeasureObserverAvailable) {
 				getFmeasureForInstance(data.getNextInstance(), true, isPrequential);

@@ -109,20 +109,25 @@ public class PLTEnsemble extends AbstractLearner {
 		if (data.getNumberOfLabels() > currentNumberOfLabels)
 			addNewPLT(data);
 
-		ExecutorService executor = Executors.newWorkStealingPool();
-		for (PLT plt : plts) {
-			executor.submit(() -> {
-				logger.info("Training " + plt);
-				plt.train(data);
-			});
-		}
+		// ExecutorService executor = Executors.newWorkStealingPool();
+		// for (PLT plt : plts) {
+		// executor.submit(() -> {
+		// logger.info("Training " + plt);
+		// plt.train(data);
+		// });
+		// }
+		//
+		// executor.shutdown();
+		// try {
+		// executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+		// } catch (InterruptedException e) {
+		// logger.warn("Threds interrupted. Tasks took more than " +
+		// Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
+		// + " to finish.");
+		// }
 
-		executor.shutdown();
-		try {
-			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
-			logger.warn("Threds interrupted. Tasks took more than " + Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
-					+ " to finish.");
+		for (PLT plt : plts) {
+			plt.train(data);
 		}
 
 		int numberOfTrainingInstancesInThisSession = plts.get(0)

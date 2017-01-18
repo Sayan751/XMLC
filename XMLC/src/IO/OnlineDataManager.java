@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.StringTokenizer;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -254,6 +255,18 @@ public class OnlineDataManager extends DataManager {
 
 	@Override
 	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void loadNext(int count, UUID learnerId) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure, UUID learnerId) {
 		// TODO Auto-generated method stub
 		return false;
 	}

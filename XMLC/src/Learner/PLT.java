@@ -252,8 +252,6 @@ public class PLT extends AbstractLearner {
 			logger.info("--> END of Epoch: " + (ep + 1) + " (" + this.epochs + ")");
 		}
 
-		evaluate(data, false);
-
 		int zeroW = 0;
 		double sumW = 0;
 		int maxNonZero = 0;
@@ -275,8 +273,10 @@ public class PLT extends AbstractLearner {
 		if (this.thresholdTuner != null) {
 			tuneThreshold(data);
 		}
+
+		evaluate(data, false);
 	}
-	
+
 	protected void updatedPosteriors(AVPair[] x, int label, double inc) {
 
 		this.learningRate = this.gamma / (1 + this.gamma * this.lambda * this.Tarray[label]);
