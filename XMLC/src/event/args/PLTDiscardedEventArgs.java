@@ -4,4 +4,5 @@ import Learner.PLT;
 
 public class PLTDiscardedEventArgs {
 	public PLT discardedPLT;
+	public Object pltId;
 }

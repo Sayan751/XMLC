@@ -1,0 +1,379 @@
+package Learner;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import Data.AVPair;
+import IO.DataManager;
+import event.args.PLTCreationEventArgs;
+import event.args.PLTDiscardedEventArgs;
+import event.listeners.IPLTCreatedListener;
+import event.listeners.IPLTDiscardedListener;
+import interfaces.ILearnerRepository;
+import util.Constants;
+import util.Constants.LearnerInitProperties;
+
+public class PLTEnsemble2 extends AbstractLearner {
+	private static final long serialVersionUID = 7193120904682573610L;
+
+	private static Logger logger = LoggerFactory.getLogger(PLTEnsemble2.class);
+
+	private ILearnerRepository learnerRepository;
+	private int currentNumberOfLabels = 0;
+	private List<PLTPropertiesForCache> pltCache;
+
+	transient private Set<IPLTCreatedListener> pltCreatedListeners;
+	transient private Set<IPLTDiscardedListener> pltDiscardedListeners;
+
+	/**
+	 * Slack variable for fmeasure comparison.
+	 */
+	private final double epsilon;
+
+	/**
+	 * Fraction of learners to retain in the discarding phase.
+	 */
+	private final double retainmentFraction;
+
+	/**
+	 * Minimum number of training instances an individual PLT should be trained
+	 * on, before discarding.
+	 */
+	private final int minTraingInstances;
+
+	public PLTEnsemble2(Properties properties) throws Exception {
+		super(properties);
+
+		learnerRepository = (ILearnerRepository) properties.get(LearnerInitProperties.learnerRepository);
+		if (learnerRepository == null)
+			throw new Exception(
+					"Invalid initialization parameters. A required learnerRepository object is not provided.");
+
+		pltCache = new ArrayList<PLTPropertiesForCache>();
+		pltCreatedListeners = new HashSet<IPLTCreatedListener>();
+		pltDiscardedListeners = new HashSet<IPLTDiscardedListener>();
+
+		epsilon = Double.parseDouble(
+				properties.getProperty(LearnerInitProperties.pltEnsembleEpsilon,
+						Double.toString(Constants.PLTEnsembleDefaultValues.epsilon)));
+		retainmentFraction = Double
+				.parseDouble(properties.getProperty(LearnerInitProperties.pltEnsembleRetainmentFraction,
+						Double.toString(Constants.PLTEnsembleDefaultValues.retainmentFraction)));
+		minTraingInstances = Integer.parseInt(properties.getProperty(LearnerInitProperties.pltEnsembleEpsilon,
+				Integer.toString(Constants.PLTEnsembleDefaultValues.minTraingInstances)));
+	}
+
+	@Override
+	public void allocateClassifiers(DataManager data) {
+		if (pltCache.isEmpty()) {
+			addNewPLT(data);
+		}
+	}
+
+	private void addNewPLT(DataManager data) {
+		Properties pltProperties = (Properties) properties.get(LearnerInitProperties.individualPLTProperties);
+		pltProperties.put(LearnerInitProperties.isToComputeFmeasureOnTopK, isToComputeFmeasureOnTopK);
+		pltProperties.put(LearnerInitProperties.defaultK, defaultK);
+		if (fmeasureObserverAvailable)
+			pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
+
+		PLT plt = new PLT(pltProperties);
+		plt.allocateClassifiers(data);
+		UUID learnerId = learnerRepository.create(plt, getId());
+		pltCache.add(new PLTPropertiesForCache(learnerId, plt.m));
+		currentNumberOfLabels = data.getNumberOfLabels();
+		onPLTCreated(plt);
+	}
+
+	@Override
+	public void train(final DataManager data) {
+
+		double fmeasureOld = getAverageFmeasure(false);
+		int soFar = pltCache.size() > 0
+				? pltCache.get(0).numberOfInstances
+				: 0;
+
+		if (data.getNumberOfLabels() > currentNumberOfLabels)
+			addNewPLT(data);
+
+		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+
+			Object learnerId = pltCacheEntry.learnerId;
+			logger.info("Training " + learnerId);
+
+			PLT plt = learnerRepository.read(learnerId, PLT.class);
+			plt.train(data);
+
+			// Collect and cache required data from plt
+			pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
+			pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+
+			// persist all changes happened during the training.
+			learnerRepository.update(learnerId, plt);
+		}
+
+		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
+
+		double fmeasureNew = getTempFMeasureOnData(data, fmeasureOld);
+		if (fmeasureNew < fmeasureOld && Math.abs(fmeasureNew - fmeasureOld) > epsilon) {
+			discardLearners(fmeasureOld, fmeasureNew, data);
+		}
+
+		evaluate(data, false);
+		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
+	}
+
+	/**
+	 * Orders the learners by score {@code PLT#scoringStrategy}, discards low
+	 * scoring learners until termination criteria is met. <br/>
+	 * <br/>
+	 * Termination criteria:
+	 * {@code (|fmeasureOld - fmeasureNew| <= epsilon) OR (plts.size() <= minimum number of PLTs to retain) }
+	 * 
+	 * @param fmeasureOld
+	 * @param fmeasureNew
+	 * @param data
+	 */
+	private void discardLearners(final double fmeasureOld, double fmeasureNew, DataManager data) {
+		List<PLTPropertiesForCache> scoredLearnerIds = getScoredLearners().entrySet()
+				.stream()
+				.sorted(Entry.<PLTPropertiesForCache, Double>comparingByValue())
+				.map(entry -> entry.getKey())
+				.collect(Collectors.toList());
+
+		int minNumberOfPltsToRetain = (int) Math.ceil(pltCache.size() * retainmentFraction);
+
+		while (Math.abs(fmeasureNew - fmeasureOld) > epsilon && pltCache.size() > minNumberOfPltsToRetain
+				&& scoredLearnerIds.size() > 0) {
+
+			PLTPropertiesForCache cachedPltDetails = scoredLearnerIds.remove(0);
+			if (cachedPltDetails.numberOfInstances > minTraingInstances) {
+				pltCache.remove(cachedPltDetails);
+				onPLTDiscarded(cachedPltDetails);
+			}
+
+			fmeasureNew = getTempFMeasureOnData(data, fmeasureOld);
+		}
+	}
+
+	private Map<PLTPropertiesForCache, Double> getScoredLearners() {
+		return pltCache.stream()
+				.collect(Collectors.toMap(c -> c, c -> scoringStrategy(c)));
+	}
+
+	/**
+	 * 
+	 * @param cachedPltDetails
+	 * @return The score of {@code plt} as
+	 *         {@code avgFmeasureOfPlt - (numberOfTrainingInstancesSeenByPlt/TotalNumberOfTrainingInstancesSeenSoFar)}
+	 */
+	private double scoringStrategy(PLTPropertiesForCache cachedPltDetails) {
+		return cachedPltDetails.avgFmeasure
+				- ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen());
+	}
+
+	private double getTempFMeasureOnData(DataManager data, double fmeasureOld) {
+		List<Double> resultantFmeasures = new ArrayList<Double>();
+		while (data.hasNext() == true) {
+			resultantFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
+		}
+		data.reset();
+		return (resultantFmeasures.stream()
+				.mapToDouble(d -> d)
+				.sum() + fmeasureOld) / (resultantFmeasures.size() + numberOfTrainingInstancesSeen);
+	}
+
+	@Override
+	public HashSet<Integer> getPositiveLabels(AVPair[] x) {
+
+		ExecutorService executor = Executors.newWorkStealingPool();
+		List<Callable<HashSet<Integer>>> tasks = new ArrayList<Callable<HashSet<Integer>>>();
+
+		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+			tasks.add(() -> {
+				logger.info("Getting predictions from " + pltCacheEntry.learnerId);
+				return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
+						.getPositiveLabels(x);
+			});
+		}
+
+		HashSet<Integer> predictions = null;
+
+		try {
+			predictions = executor.invokeAll(tasks)
+					.stream()
+					.flatMap(future -> {
+						try {
+							return future.get()
+									.stream();
+						} catch (InterruptedException | ExecutionException e) {
+							throw new IllegalStateException(e);
+						}
+					})
+					.collect(Collectors.toCollection(HashSet::new));
+
+			executor.shutdown();
+			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			logger.warn(
+					"Threds interrupted. Prediction took more than " + Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
+							+ " to finish.");
+		}
+
+		return predictions;
+	}
+
+	@Override
+	public int[] getTopkLabels(AVPair[] x, int k) {
+		List<int[]> predictions = getTopkLabelsFromEnsemble(x, k);
+
+		if (predictions != null) {
+			// Map predictions to Label to Set_Of_PLTs.
+			ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>> labelLearnerMap = new ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>>();
+
+			IntStream.range(0, predictions.size())
+					.forEach(index -> Arrays
+							.stream(predictions.get(index))
+							.forEach(label -> {
+								if (!labelLearnerMap.containsKey(label))
+									labelLearnerMap.put(label, new HashSet<PLTPropertiesForCache>());
+								labelLearnerMap.get(label)
+										.add(pltCache.get(index));
+							}));
+
+			// Assign score to each label
+			Map<Integer, Double> labelScoreMap = labelLearnerMap.entrySet()
+					.stream()
+					.collect(Collectors.toMap(
+							entry -> entry.getKey(),
+
+							/* score = sum(avg. fmeasure of PLT predicting positive)/numberOfPLTsHavingThisLabel */
+							entry -> {
+								Integer label = entry.getKey();
+								long numberOfPltsHavingLabel = pltCache.stream()
+										.filter(cachedPltDetails -> cachedPltDetails.numberOfLabels > label)
+										.count();
+								return (entry.getValue()
+										.stream()
+										.reduce(0.0,
+												(sum, cachedPltDetails) -> sum += cachedPltDetails.avgFmeasure,
+												(sum1, sum2) -> sum1 + sum2))
+										/ numberOfPltsHavingLabel;
+							}));
+
+			// Sort the map by score (desc.) and return top k labels.
+			return labelScoreMap.entrySet()
+					.stream()
+					.sorted(Entry.<Integer, Double>comparingByValue()
+							.reversed())
+					.limit(k)
+					.mapToInt(entry -> entry.getKey())
+					.toArray();
+		}
+
+		return null;
+	}
+
+	private List<int[]> getTopkLabelsFromEnsemble(AVPair[] x, int k) {
+		ExecutorService executor = Executors.newWorkStealingPool();
+		List<Callable<int[]>> tasks = new ArrayList<Callable<int[]>>();
+
+		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+			tasks.add(() -> {
+				logger.info("Getting predictions from " + pltCacheEntry.learnerId);
+				return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
+						.getTopkLabels(x, k);
+			});
+		}
+
+		List<int[]> predictions = null;
+
+		try {
+			predictions = executor.invokeAll(tasks)
+					.stream()
+					.map(future -> {
+						try {
+							return future.get();
+						} catch (InterruptedException | ExecutionException e) {
+							throw new IllegalStateException(e);
+						}
+					})
+					.collect(Collectors.toList());
+
+			executor.shutdown();
+			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			logger.warn(
+					"Threds interrupted. Prediction took more than " + Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
+							+ " to finish.");
+		}
+		return predictions;
+	}
+
+	@Override
+	public double getPosteriors(AVPair[] x, int label) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public void addPLTCreatedListener(IPLTCreatedListener listener) {
+		pltCreatedListeners.add(listener);
+	}
+
+	public void removePLTCreatedListener(IPLTCreatedListener listener) {
+		pltCreatedListeners.remove(listener);
+	}
+
+	private void onPLTCreated(PLT plt) {
+		PLTCreationEventArgs args = new PLTCreationEventArgs();
+		args.plt = plt;
+
+		pltCreatedListeners.stream()
+				.forEach(listener -> listener.onPLTCreated(this, args));
+	}
+
+	private void onPLTDiscarded(Object pltId) {
+		PLTDiscardedEventArgs args = new PLTDiscardedEventArgs();
+		args.pltId = pltId;
+
+		pltDiscardedListeners.stream()
+				.forEach(listener -> listener.onPLTDiscarded(this, args));
+	}
+
+	class PLTPropertiesForCache {
+		Object learnerId;
+		int numberOfInstances;
+		int numberOfLabels;
+		double avgFmeasure;
+
+		public PLTPropertiesForCache(Object learnerId, int numberOfLabels) {
+			this.learnerId = learnerId;
+			this.numberOfLabels = numberOfLabels;
+		}
+
+		public PLTPropertiesForCache(Object learnerId, int numberOfLabels, int numberOfInstances,
+				double avgFmeasure) {
+			this(learnerId, numberOfLabels);
+			this.numberOfInstances = numberOfInstances;
+			this.avgFmeasure = avgFmeasure;
+		}
+	}
+}

@@ -41,14 +41,14 @@ public abstract class DataManager {
 	public void close() {
 	};
 
-	public boolean markProcessed(Instance instance) {
-		return markProcessed(instance, -1.0, -1.0);
-	}
-
-	public abstract boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure);
-
-	public abstract boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure,
-			UUID learnerId);
+	/*	public boolean markProcessed(Instance instance) {
+			return markProcessed(instance, -1.0, -1.0);
+		}
+	
+		public abstract boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure);
+	
+		public abstract boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure,
+				UUID learnerId);*/
 
 	public static DataManager managerFactory(String filename, String datamanagertype) {
 		DataManager datamanager = null;

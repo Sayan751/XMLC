@@ -12,8 +12,8 @@ public class BatchDataManager extends DataManager {
 	protected boolean isHeader = true;
 	protected AVTable data = null;
 	protected int currentIndex = 0;
-	
-	public BatchDataManager( String filename ) {
+
+	public BatchDataManager(String filename) {
 		DataReader datareader = new DataReader(filename, false, this.isHeader);
 		try {
 			data = datareader.read();
@@ -22,15 +22,15 @@ public class BatchDataManager extends DataManager {
 		}
 		this.currentIndex = 0;
 	}
-	
-	public BatchDataManager( AVTable data ) {
+
+	public BatchDataManager(AVTable data) {
 		this.data = data;
 		this.currentIndex = 0;
 	}
 
 	@Override
 	public boolean hasNext() {
-		if (currentIndex >= data.n )
+		if (currentIndex >= data.n)
 			return false;
 		else
 			return true;
@@ -52,44 +52,32 @@ public class BatchDataManager extends DataManager {
 	public int getNumberOfLabels() {
 		return data.m;
 	}
-	
+
 	@Override
-	public void setInputStream( InputStreamReader input ) {
-		
+	public void setInputStream(InputStreamReader input) {
+
 	}
 
 	@Override
 	public void reset() {
 		this.currentIndex = 0;
-		
+
 	}
 
 	@Override
 	public DataManager getCopy() {
-		return new BatchDataManager(this.data);		
+		return new BatchDataManager(this.data);
 	}
 
 	@Override
 	public void loadNext(int count) {
 		// TODO Auto-generated method stub
-		
-	}
 
-	@Override
-	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure) {
-		// TODO Auto-generated method stub
-		return false;
 	}
 
 	@Override
 	public void loadNext(int count, UUID learnerId) {
 		// TODO Auto-generated method stub
-		
-	}
 
-	@Override
-	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure, UUID learnerId) {
-		// TODO Auto-generated method stub
-		return false;
 	}
 }

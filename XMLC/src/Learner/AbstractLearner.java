@@ -13,6 +13,7 @@ import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
@@ -28,8 +29,8 @@ import Data.EstimatePair;
 import Data.Instance;
 import IO.DataManager;
 import event.args.InstanceProcessedEventArgs;
-import event.listeners.IFmeasureObserver;
 import event.listeners.IInstanceProcessedListener;
+import interfaces.IFmeasureObserver;
 import threshold.ThresholdTuner;
 import util.IoUtils;
 import util.Constants.ThresholdTuningDataKeys;
@@ -80,7 +81,7 @@ public abstract class AbstractLearner implements Serializable {
 
 	protected final boolean fmeasureObserverAvailable;
 
-	private Object id;
+	private UUID id;
 
 	// abstract functions
 	public abstract void allocateClassifiers(DataManager data);
@@ -398,11 +399,11 @@ public abstract class AbstractLearner implements Serializable {
 		data.reset();
 	}
 
-	public Object getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	public void setId(Object id) {
+	public void setId(UUID id) {
 		this.id = id;
 	}
 }

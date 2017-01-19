@@ -254,21 +254,8 @@ public class OnlineDataManager extends DataManager {
 	}
 
 	@Override
-	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
 	public void loadNext(int count, UUID learnerId) {
 		// TODO Auto-generated method stub
 		
 	}
-
-	@Override
-	public boolean markProcessed(Instance instance, double prequentialFmeasure, double fMeasure, UUID learnerId) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-	
 }

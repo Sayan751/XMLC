@@ -44,5 +44,6 @@ public class Constants {
 		public static final String fmeasureObserver = "fmeasureObserver";
 		public static final String tunerType = "tunerType";
 		public static final String tunerInitOption = "tunerInitOption";
+		public static final String learnerRepository = "learnerRepository";
 	}
 }
