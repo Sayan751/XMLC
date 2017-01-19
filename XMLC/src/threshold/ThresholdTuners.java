@@ -1,5 +1,5 @@
 package threshold;
 
 public enum ThresholdTuners {
-	Eum, EumFast, Exu, ExuFast, Ofo, OfoFast
+	None, Eum, EumFast, Exu, ExuFast, Ofo, OfoFast
 }

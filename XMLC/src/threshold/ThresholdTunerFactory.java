@@ -5,13 +5,19 @@ import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import util.Constants.LearnerInitProperties;
+
 public abstract class ThresholdTunerFactory {
 	private static Logger logger = LoggerFactory.getLogger(ThresholdTunerFactory.class);
 
 	public static ThresholdTuner createThresholdTuner(int numberOfLabels, Properties properties) {
 
-		ThresholdTuners type = (ThresholdTuners) properties.get("tunerType");
-		ThresholdTunerInitOption initOption = (ThresholdTunerInitOption) properties.get("tunerInitOption");
+		ThresholdTuners type = properties.containsKey(LearnerInitProperties.tunerType)
+				? ThresholdTuners.valueOf(properties.getProperty(LearnerInitProperties.tunerType))
+				: ThresholdTuners.None;
+
+		ThresholdTunerInitOption initOption = (ThresholdTunerInitOption) properties
+				.get(LearnerInitProperties.tunerInitOption);
 		ThresholdTuner retVal = null;
 
 		switch (type) {
