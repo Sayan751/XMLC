@@ -36,7 +36,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 	private static Logger logger = LoggerFactory.getLogger(PLTEnsemble2.class);
 
-	private ILearnerRepository learnerRepository;
+	transient private ILearnerRepository learnerRepository;
 	private int currentNumberOfLabels = 0;
 	private List<PLTPropertiesForCache> pltCache;
 
@@ -116,10 +116,10 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
-			Object learnerId = pltCacheEntry.learnerId;
-			logger.info("Training " + learnerId);
+			UUID learnerId = pltCacheEntry.learnerId;
 
-			PLT plt = learnerRepository.read(learnerId, PLT.class);
+			PLT plt = getPLT(learnerId);
+			logger.info("Training " + learnerId);
 			plt.train(data);
 
 			// Collect and cache required data from plt
@@ -139,6 +139,16 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		evaluate(data, false);
 		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
+	}
+
+	private PLT getPLT(UUID learnerId) {
+		PLT plt = learnerRepository.read(learnerId, PLT.class);
+		logger.info("Revived plt:" + learnerId);
+		if (plt.fmeasureObserverAvailable) {
+			plt.fmeasureObserver = fmeasureObserver;
+			plt.addInstanceProcessedListener(fmeasureObserver);
+		}
+		return plt;
 	}
 
 	/**
@@ -204,39 +214,51 @@ public class PLTEnsemble2 extends AbstractLearner {
 	@Override
 	public HashSet<Integer> getPositiveLabels(AVPair[] x) {
 
-		ExecutorService executor = Executors.newWorkStealingPool();
-		List<Callable<HashSet<Integer>>> tasks = new ArrayList<Callable<HashSet<Integer>>>();
+		HashSet<Integer> predictions = new HashSet<Integer>();
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-			tasks.add(() -> {
-				logger.info("Getting predictions from " + pltCacheEntry.learnerId);
-				return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
-						.getPositiveLabels(x);
-			});
+
+			logger.info("Getting predictions from " + pltCacheEntry.learnerId);
+			predictions.addAll(learnerRepository
+					.read(pltCacheEntry.learnerId, PLT.class)
+					.getPositiveLabels(x));
 		}
 
-		HashSet<Integer> predictions = null;
-
-		try {
-			predictions = executor.invokeAll(tasks)
-					.stream()
-					.flatMap(future -> {
-						try {
-							return future.get()
-									.stream();
-						} catch (InterruptedException | ExecutionException e) {
-							throw new IllegalStateException(e);
-						}
-					})
-					.collect(Collectors.toCollection(HashSet::new));
-
-			executor.shutdown();
-			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
-			logger.warn(
-					"Threds interrupted. Prediction took more than " + Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
-							+ " to finish.");
-		}
+		// ExecutorService executor = Executors.newWorkStealingPool();
+		// List<Callable<HashSet<Integer>>> tasks = new
+		// ArrayList<Callable<HashSet<Integer>>>();
+		//
+		// for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+		// tasks.add(() -> {
+		// logger.info("Getting predictions from " + pltCacheEntry.learnerId);
+		// return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
+		// .getPositiveLabels(x);
+		// });
+		// }
+		//
+		// HashSet<Integer> predictions = null;
+		//
+		// try {
+		// predictions = executor.invokeAll(tasks)
+		// .stream()
+		// .flatMap(future -> {
+		// try {
+		// return future.get()
+		// .stream();
+		// } catch (InterruptedException | ExecutionException e) {
+		// throw new IllegalStateException(e);
+		// }
+		// })
+		// .collect(Collectors.toCollection(HashSet::new));
+		//
+		// executor.shutdown();
+		// executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+		// } catch (InterruptedException e) {
+		// logger.warn(
+		// "Threds interrupted. Prediction took more than " + Integer.MAX_VALUE
+		// + " " + TimeUnit.MILLISECONDS
+		// + " to finish.");
+		// }
 
 		return predictions;
 	}
@@ -293,38 +315,44 @@ public class PLTEnsemble2 extends AbstractLearner {
 	}
 
 	private List<int[]> getTopkLabelsFromEnsemble(AVPair[] x, int k) {
-		ExecutorService executor = Executors.newWorkStealingPool();
-		List<Callable<int[]>> tasks = new ArrayList<Callable<int[]>>();
+		List<int[]> predictions = new ArrayList<int[]>();
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-			tasks.add(() -> {
-				logger.info("Getting predictions from " + pltCacheEntry.learnerId);
-				return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
-						.getTopkLabels(x, k);
-			});
+			predictions.add(learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
+					.getTopkLabels(x, k));
 		}
 
-		List<int[]> predictions = null;
-
-		try {
-			predictions = executor.invokeAll(tasks)
-					.stream()
-					.map(future -> {
-						try {
-							return future.get();
-						} catch (InterruptedException | ExecutionException e) {
-							throw new IllegalStateException(e);
-						}
-					})
-					.collect(Collectors.toList());
-
-			executor.shutdown();
-			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
-			logger.warn(
-					"Threds interrupted. Prediction took more than " + Integer.MAX_VALUE + " " + TimeUnit.MILLISECONDS
-							+ " to finish.");
-		}
+		// ExecutorService executor = Executors.newWorkStealingPool();
+		// List<Callable<int[]>> tasks = new ArrayList<Callable<int[]>>();
+		//
+		// for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+		// tasks.add(() -> {
+		// logger.info("Getting predictions from " + pltCacheEntry.learnerId);
+		// return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
+		// .getTopkLabels(x, k);
+		// });
+		// }
+		//
+		// try {
+		// predictions = executor.invokeAll(tasks)
+		// .stream()
+		// .map(future -> {
+		// try {
+		// return future.get();
+		// } catch (InterruptedException | ExecutionException e) {
+		// throw new IllegalStateException(e);
+		// }
+		// })
+		// .collect(Collectors.toList());
+		//
+		// executor.shutdown();
+		// executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+		// } catch (InterruptedException e) {
+		// logger.warn(
+		// "Threds interrupted. Prediction took more than " + Integer.MAX_VALUE
+		// + " " + TimeUnit.MILLISECONDS
+		// + " to finish.");
+		// }
 		return predictions;
 	}
 
@@ -359,17 +387,17 @@ public class PLTEnsemble2 extends AbstractLearner {
 	}
 
 	class PLTPropertiesForCache {
-		Object learnerId;
+		UUID learnerId;
 		int numberOfInstances;
 		int numberOfLabels;
 		double avgFmeasure;
 
-		public PLTPropertiesForCache(Object learnerId, int numberOfLabels) {
+		public PLTPropertiesForCache(UUID learnerId, int numberOfLabels) {
 			this.learnerId = learnerId;
 			this.numberOfLabels = numberOfLabels;
 		}
 
-		public PLTPropertiesForCache(Object learnerId, int numberOfLabels, int numberOfInstances,
+		public PLTPropertiesForCache(UUID learnerId, int numberOfLabels, int numberOfInstances,
 				double avgFmeasure) {
 			this(learnerId, numberOfLabels);
 			this.numberOfInstances = numberOfInstances;

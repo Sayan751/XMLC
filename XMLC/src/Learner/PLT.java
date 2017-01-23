@@ -32,7 +32,7 @@ public class PLT extends AbstractLearner {
 	/**
 	 * Number of node of the trees
 	 */
-	transient protected int t = 0;
+	protected int t = 0;
 	protected Tree tree = null;
 
 	/**
@@ -46,7 +46,7 @@ public class PLT extends AbstractLearner {
 	// transient protected AVTable traindata = null;
 	transient protected DataManager traindata = null;
 
-	transient protected FeatureHasher fh = null;
+	protected FeatureHasher fh = null;
 	protected String hasher = "Universal";
 	protected int fhseed = 1;
 	/**
@@ -57,7 +57,7 @@ public class PLT extends AbstractLearner {
 	protected double[] bias;
 	protected double[] w = null;
 
-	transient protected int[] Tarray = null;
+	protected int[] Tarray = null;
 	protected double[] scalararray = null;
 
 	protected double gamma = 0; // learning rate
@@ -67,6 +67,10 @@ public class PLT extends AbstractLearner {
 	protected double scalar = 1.0;
 	protected double lambda = 0.00001;
 	protected int epochs = 1;
+
+	public PLT() {
+		super();
+	}
 
 	public PLT(Properties properties) {
 		super(properties);
@@ -194,13 +198,15 @@ public class PLT extends AbstractLearner {
 				HashSet<Integer> negativeTreeIndices = new HashSet<Integer>();
 
 				for (int j = 0; j < instance.y.length; j++) {
-
-					int treeIndex = this.tree.getTreeIndex(instance.y[j]);
-					positiveTreeIndices.add(treeIndex);
-
-					while (treeIndex > 0) {
-						treeIndex = (int) this.tree.getParent(treeIndex);
+					//Labels start from 0
+					if (instance.y[j] < m) {
+						int treeIndex = this.tree.getTreeIndex(instance.y[j]);
 						positiveTreeIndices.add(treeIndex);
+
+						while (treeIndex > 0) {
+							treeIndex = (int) this.tree.getParent(treeIndex);
+							positiveTreeIndices.add(treeIndex);
+						}
 					}
 				}
 

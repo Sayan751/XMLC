@@ -24,6 +24,9 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 	protected int[] aThresholdNumerators = null;
 	protected int[] bThresholdDenominators = null;
 
+	public OfoFastThresholdTuner() {
+	}
+
 	public OfoFastThresholdTuner(int numberOfLabels, ThresholdTunerInitOption thresholdTunerInitOption) {
 		super(numberOfLabels, thresholdTunerInitOption);
 
@@ -157,10 +160,12 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 			}
 
 			for (int trueLabel : truePositives) {
-				bThresholdDenominators[trueLabel]++;
-				thresholdsToChange.add(trueLabel);
-				if (predictedPositives.contains(trueLabel))
-					aThresholdNumerators[trueLabel]++;
+				if (trueLabel < numberOfLabels) {
+					bThresholdDenominators[trueLabel]++;
+					thresholdsToChange.add(trueLabel);
+					if (predictedPositives.contains(trueLabel))
+						aThresholdNumerators[trueLabel]++;
+				}
 			}
 		}
 

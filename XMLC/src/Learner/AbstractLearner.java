@@ -69,17 +69,17 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	protected List<Double> prequentialFmeasures;
 
-	protected final boolean isToComputeFmeasureOnTopK;
+	protected boolean isToComputeFmeasureOnTopK;
 
 	/**
 	 * Default {@code k} is 'topK' based methods.
 	 */
-	protected final int defaultK;
+	protected int defaultK;
 
 	transient protected Set<IInstanceProcessedListener> instanceProcessedListeners;
 	transient protected IFmeasureObserver fmeasureObserver;
 
-	protected final boolean fmeasureObserverAvailable;
+	protected boolean fmeasureObserverAvailable;
 
 	private UUID id;
 
@@ -156,14 +156,19 @@ public abstract class AbstractLearner implements Serializable {
 		this.thresholds[label] = t;
 	}
 
+	public AbstractLearner() {
+		instanceProcessedListeners = new HashSet<IInstanceProcessedListener>();
+	}
+
 	public AbstractLearner(Properties properties) {
+		this();
 		this.properties = properties;
 
 		Object tempPropValue = properties.get(LearnerInitProperties.isToComputeFmeasureOnTopK);
 		isToComputeFmeasureOnTopK = tempPropValue != null
 				? (Boolean) tempPropValue
 				: LearnerDefaultValues.isToComputeFmeasureOnTopK;
-				
+
 		tempPropValue = properties.get(LearnerInitProperties.defaultK);
 		defaultK = tempPropValue != null
 				? (Integer) tempPropValue
@@ -172,8 +177,6 @@ public abstract class AbstractLearner implements Serializable {
 		fmeasureObserver = (IFmeasureObserver) properties.get(LearnerInitProperties.fmeasureObserver);
 
 		fmeasureObserverAvailable = fmeasureObserver != null;
-
-		instanceProcessedListeners = new HashSet<IInstanceProcessedListener>();
 
 		if (fmeasureObserverAvailable)
 			addInstanceProcessedListener(fmeasureObserver);

@@ -12,12 +12,22 @@ import util.Constants;
  *
  */
 public abstract class ThresholdTuner {
-	protected final int numberOfLabels;
-	
+	protected int numberOfLabels;
+
 	public abstract ThresholdTuners getTunerType();
+
+	public ThresholdTuner() {
+	}
 
 	public ThresholdTuner(int numberOfLabels, ThresholdTunerInitOption thresholdTunerInitOption) {
 		this.numberOfLabels = numberOfLabels;
+	}
+
+	/**
+	 * @return the numberOfLabels
+	 */
+	public int getNumberOfLabels() {
+		return numberOfLabels;
 	}
 
 	/**
