@@ -61,6 +61,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 	public PLTEnsemble2(Properties properties) throws Exception {
 		super(properties);
+		
 
 		learnerRepository = (ILearnerRepository) properties.get(LearnerInitProperties.learnerRepository);
 		if (learnerRepository == null)
@@ -77,7 +78,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 		retainmentFraction = Double
 				.parseDouble(properties.getProperty(LearnerInitProperties.pltEnsembleRetainmentFraction,
 						Double.toString(Constants.PLTEnsembleDefaultValues.retainmentFraction)));
-		minTraingInstances = Integer.parseInt(properties.getProperty(LearnerInitProperties.pltEnsembleEpsilon,
+		minTraingInstances = Integer.parseInt(properties.getProperty(LearnerInitProperties.minTraingInstances,
 				Integer.toString(Constants.PLTEnsembleDefaultValues.minTraingInstances)));
 	}
 

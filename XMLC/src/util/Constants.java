@@ -37,6 +37,7 @@ public class Constants {
 
 	public static class LearnerInitProperties {
 		public static final String individualPLTProperties = "individualPLTProperties";
+		public static final String minTraingInstances = "minTraingInstances";
 		public static final String pltEnsembleEpsilon = "pltEnsembleEpsilon";
 		public static final String pltEnsembleRetainmentFraction = "pltEnsembleRetainmentFraction";
 		public static final String isToComputeFmeasureOnTopK = "isToComputeFmeasureOnTopK";
