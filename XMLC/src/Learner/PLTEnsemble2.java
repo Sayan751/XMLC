@@ -61,7 +61,6 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 	public PLTEnsemble2(Properties properties) throws Exception {
 		super(properties);
-		
 
 		learnerRepository = (ILearnerRepository) properties.get(LearnerInitProperties.learnerRepository);
 		if (learnerRepository == null)
@@ -379,9 +378,17 @@ public class PLTEnsemble2 extends AbstractLearner {
 				.forEach(listener -> listener.onPLTCreated(this, args));
 	}
 
-	private void onPLTDiscarded(Object pltId) {
+	public void addPLTDiscardedListener(IPLTDiscardedListener listener) {
+		pltDiscardedListeners.add(listener);
+	}
+
+	public void removePLTDiscardedListener(IPLTDiscardedListener listener) {
+		pltDiscardedListeners.remove(listener);
+	}
+
+	private void onPLTDiscarded(PLTPropertiesForCache plt) {
 		PLTDiscardedEventArgs args = new PLTDiscardedEventArgs();
-		args.pltId = pltId;
+		args.pltId = plt.learnerId;
 
 		pltDiscardedListeners.stream()
 				.forEach(listener -> listener.onPLTDiscarded(this, args));
