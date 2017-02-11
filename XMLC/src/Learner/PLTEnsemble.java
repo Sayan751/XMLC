@@ -30,6 +30,13 @@ import event.listeners.IPLTDiscardedListener;
 import util.Constants;
 import util.Constants.LearnerInitProperties;
 
+/**
+ * @author Sayan
+ * 
+ * @deprecated In favor of {@link PLTEnsemble2}. 
+ *
+ */
+@Deprecated()
 public class PLTEnsemble extends AbstractLearner {
 	private static final long serialVersionUID = 7193120904682573610L;
 

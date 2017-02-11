@@ -9,12 +9,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -107,6 +102,8 @@ public class PLTEnsemble2 extends AbstractLearner {
 	public void train(final DataManager data) {
 
 		double fmeasureOld = getAverageFmeasure(false);
+		double sumFmOld = fmeasureOld * getNumberOfTrainingInstancesSeen();
+
 		int soFar = pltCache.size() > 0
 				? pltCache.get(0).numberOfInstances
 				: 0;
@@ -131,14 +128,16 @@ public class PLTEnsemble2 extends AbstractLearner {
 		}
 
 		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
+		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
 
-		double fmeasureNew = getTempFMeasureOnData(data, fmeasureOld);
+		double fmeasureNew = getTempFMeasureOnData(data, sumFmOld);
+		logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
+				+ Math.abs(fmeasureNew - fmeasureOld));
 		if (fmeasureNew < fmeasureOld && Math.abs(fmeasureNew - fmeasureOld) > epsilon) {
-			discardLearners(fmeasureOld, fmeasureNew, data);
+			discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
 		}
 
 		evaluate(data, false);
-		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
 	}
 
 	private PLT getPLT(UUID learnerId) {
@@ -156,13 +155,18 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 * scoring learners until termination criteria is met. <br/>
 	 * <br/>
 	 * Termination criteria:
-	 * {@code (|fmeasureOld - fmeasureNew| <= epsilon) OR (plts.size() <= minimum number of PLTs to retain) }
+	 * {@code (fmeasureNew - fmeasureOld > epsilon) OR (plts.size() <= minimum number of PLTs to retain) }
 	 * 
+	 * @param sumFmOld
+	 *            Sum of old fmeasures (approximated with
+	 *            {@code numberOfTrainingInstancesSeenPreviously * averageFmeasure}).
 	 * @param fmeasureOld
 	 * @param fmeasureNew
 	 * @param data
 	 */
-	private void discardLearners(final double fmeasureOld, double fmeasureNew, DataManager data) {
+	private void discardLearners(final double sumFmOld, final double fmeasureOld, double fmeasureNew,
+			DataManager data) {
+
 		List<PLTPropertiesForCache> scoredLearnerIds = getScoredLearners().entrySet()
 				.stream()
 				.sorted(Entry.<PLTPropertiesForCache, Double>comparingByValue())
@@ -171,7 +175,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		int minNumberOfPltsToRetain = (int) Math.ceil(pltCache.size() * retainmentFraction);
 
-		while (Math.abs(fmeasureNew - fmeasureOld) > epsilon && pltCache.size() > minNumberOfPltsToRetain
+		while (/*Math.abs(*/fmeasureOld - fmeasureNew/*)*/ > epsilon && pltCache.size() > minNumberOfPltsToRetain
 				&& scoredLearnerIds.size() > 0) {
 
 			PLTPropertiesForCache cachedPltDetails = scoredLearnerIds.remove(0);
@@ -180,7 +184,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 				onPLTDiscarded(cachedPltDetails);
 			}
 
-			fmeasureNew = getTempFMeasureOnData(data, fmeasureOld);
+			fmeasureNew = getTempFMeasureOnData(data, sumFmOld);
 		}
 	}
 
@@ -200,15 +204,13 @@ public class PLTEnsemble2 extends AbstractLearner {
 				- ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen());
 	}
 
-	private double getTempFMeasureOnData(DataManager data, double fmeasureOld) {
-		List<Double> resultantFmeasures = new ArrayList<Double>();
+	private double getTempFMeasureOnData(DataManager data, double sumFmOld) {
+
 		while (data.hasNext() == true) {
-			resultantFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
+			sumFmOld += getFmeasureForInstance(data.getNextInstance());
 		}
 		data.reset();
-		return (resultantFmeasures.stream()
-				.mapToDouble(d -> d)
-				.sum() + fmeasureOld) / (resultantFmeasures.size() + numberOfTrainingInstancesSeen);
+		return sumFmOld / getNumberOfTrainingInstancesSeen();
 	}
 
 	@Override
