@@ -1,11 +1,13 @@
 package Learner;
 
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,18 +63,23 @@ public class AdaptivePLT extends PLT {
 
 		int size = tree.getSize();
 
-		//choose a label and adapt
+		// choose a label and adapt
 		int chosenLabelIndex = chooseLabel(getPositiveLabelsAndPosteriors(instance.x), this.tree);
 		int newLeafIndex = ((AdaptableTree) this.tree).adaptLeaf(chosenLabelIndex, label);
 
 		int growth = tree.getSize() - size;
 
-		//adjust bias
-		List<Double> biases = Doubles.asList(bias);
+		// adjust bias
+		// List<Double> biases = Doubles.asList(bias);
+		List<Double> biases = Arrays.stream(bias)
+				.boxed()
+				.collect(Collectors.toList());
+		// for (int i = 0; i < growth; i++)
+		// biases.add(0.0);
 		biases.addAll(Collections.nCopies(growth, 0.0));
 		bias = Doubles.toArray(biases);
 
-		//adjust tuner
+		// adjust tuner
 		IAdaptiveTuner tuner = (IAdaptiveTuner) this.thresholdTuner;
 		if (tuner != null) {
 			tuner.accomodateNewLabel(label);
@@ -80,6 +87,9 @@ public class AdaptivePLT extends PLT {
 			logger.error("Threshold tuner is not of type IAdaptiveTuner");
 			System.exit(-1);
 		}
+
+		logger.info("Tree structure adapted.");
+		logger.info(tree.toString());
 
 		return newLeafIndex;
 	}

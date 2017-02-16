@@ -43,7 +43,7 @@ public class AdaptableTree extends Tree {
 	@Override
 	public int getParent(int node) {
 		TreeNode treeNode = indexToNode.get(node);
-		return treeNode.parent == null ? -1 : treeNode.parent.index;
+		return treeNode.getParent() == null ? -1 : treeNode.getParent().index;
 	}
 
 	@Override
@@ -63,7 +63,7 @@ public class AdaptableTree extends Tree {
 	}
 
 	public int getNodeDepth(int nodeIndex) {
-		return indexToNode.get(indexToNode)
+		return indexToNode.get(nodeIndex)
 				.getDepth();
 	}
 
@@ -83,7 +83,7 @@ public class AdaptableTree extends Tree {
 
 	public int adaptLeaf(int lableIndex, int newLabel) {
 		TreeNode leaf = indexToNode.get(labelToIndex.get(lableIndex));
-		TreeNode parent = leaf.parent;
+		TreeNode parent = leaf.getParent();
 
 		int maxTreeIndex = indexToNode.keySet()
 				.stream()

@@ -42,6 +42,9 @@ public class TreeNode {
 		return depth;
 	}
 
+	public TreeNode() {
+	}
+
 	public TreeNode(int index) {
 		this(index, null, -1);
 	}

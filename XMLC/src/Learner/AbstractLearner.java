@@ -329,6 +329,7 @@ public abstract class AbstractLearner implements Serializable {
 		Map<String, Object> retVal = new HashMap<String, Object>();
 		switch (thresholdTuner.getTunerType()) {
 		case OfoFast:
+		case AdaptiveOfoFast:
 			List<HashSet<Integer>> trueLabels = new ArrayList<HashSet<Integer>>();
 			List<HashSet<Integer>> predictedLabels = new ArrayList<HashSet<Integer>>();
 			while (data.hasNext()) {
@@ -356,6 +357,7 @@ public abstract class AbstractLearner implements Serializable {
 		Map<String, Object> retVal = new HashMap<String, Object>();
 		switch (thresholdTuner.getTunerType()) {
 		case OfoFast:
+		case AdaptiveOfoFast:
 			List<HashSet<Integer>> trueLabels = new ArrayList<HashSet<Integer>>();
 			List<HashSet<Integer>> predictedLabels = new ArrayList<HashSet<Integer>>();
 

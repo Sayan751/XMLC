@@ -189,7 +189,8 @@ public class PLT extends AbstractLearner {
 
 		for (int ep = 0; ep < this.epochs; ep++) {
 
-			logger.info("#############--> BEGIN of Epoch: {} ({})", (ep + 1), this.epochs);
+			// logger.info("#############--> BEGIN of Epoch: {} ({})", (ep + 1),
+			// this.epochs);
 			// random permutation
 
 			while (data.hasNext() == true) {
@@ -201,8 +202,9 @@ public class PLT extends AbstractLearner {
 
 				for (int j = 0; j < instance.y.length; j++) {
 					// Labels start from 0
-					if (instance.y[j] < m) {
-						int treeIndex = this.tree.getTreeIndex(instance.y[j]);
+					int label = instance.y[j];
+					int treeIndex = getTreeNodeIndexForLabel(label, instance);
+					if (label < m) {
 						positiveTreeIndices.add(treeIndex);
 
 						while (treeIndex > 0) {
@@ -257,7 +259,8 @@ public class PLT extends AbstractLearner {
 
 			data.reset();
 
-			logger.info("--> END of Epoch: " + (ep + 1) + " (" + this.epochs + ")");
+			// logger.info("--> END of Epoch: " + (ep + 1) + " (" + this.epochs
+			// + ")");
 		}
 
 		int zeroW = 0;
