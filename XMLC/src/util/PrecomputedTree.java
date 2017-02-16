@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.Serializable;
 import java.io.Writer;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
@@ -37,26 +36,6 @@ public class PrecomputedTree extends Tree implements Serializable {
 		initialize(treeFileName);
 		this.size = this.indexToNode.size();
 		this.numberOfInternalNodes = (int) this.size / 2;
-	}
-
-	public class TreeNode {
-		public int index;
-		public int label;
-		public TreeNode parent;
-		public List<TreeNode> children;
-
-		public TreeNode(int index) {
-			this.index = index;
-			this.label = -1;
-			this.parent = null;
-			this.children = new ArrayList<TreeNode>();
-		}
-
-		public boolean isLeaf() {
-			if (this.children.size() > 0)
-				return false;
-			return true;
-		}
 	}
 
 	public void initialize(String treeFileName) {

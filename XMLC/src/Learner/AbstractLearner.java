@@ -307,9 +307,20 @@ public abstract class AbstractLearner implements Serializable {
 		}
 	}
 
+	protected void tuneThreshold(Instance instance) {
+		try {
+			Map<Integer, Double> sparseThresholds = thresholdTuner
+					.getTunedThresholdsSparse(createTuningData(instance));
+			for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
+				setThreshold(entry.getKey(), entry.getValue());
+			}
+		} catch (Exception e) {
+			logger.error("Error during tuning the threshlds.", e);
+			e.printStackTrace();
+		}
+	}
+
 	/**
-	 * Note: This is a potential candidate to move to AbstractLearner; subject
-	 * to feasibility check.
 	 * 
 	 * @param data
 	 * @return
@@ -325,6 +336,32 @@ public abstract class AbstractLearner implements Serializable {
 				trueLabels.add(new HashSet<Integer>(Ints.asList(instance.y)));
 				predictedLabels.add(getPositiveLabels(instance.x));
 			}
+			retVal.put(ThresholdTuningDataKeys.trueLabels, trueLabels);
+			retVal.put(ThresholdTuningDataKeys.predictedLabels, predictedLabels);
+			break;
+		default:
+			logger.warn("createTuningData for " + thresholdTuner.getTunerType() + " is not yet implemented.");
+			break;
+
+		}
+		return retVal;
+	}
+
+	/**
+	 * 
+	 * @param instance
+	 * @return
+	 */
+	protected Map<String, Object> createTuningData(Instance instance) {
+		Map<String, Object> retVal = new HashMap<String, Object>();
+		switch (thresholdTuner.getTunerType()) {
+		case OfoFast:
+			List<HashSet<Integer>> trueLabels = new ArrayList<HashSet<Integer>>();
+			List<HashSet<Integer>> predictedLabels = new ArrayList<HashSet<Integer>>();
+
+			trueLabels.add(new HashSet<Integer>(Ints.asList(instance.y)));
+			predictedLabels.add(getPositiveLabels(instance.x));
+
 			retVal.put(ThresholdTuningDataKeys.trueLabels, trueLabels);
 			retVal.put(ThresholdTuningDataKeys.predictedLabels, predictedLabels);
 			break;
@@ -390,16 +427,20 @@ public abstract class AbstractLearner implements Serializable {
 	protected void evaluate(DataManager data, boolean isPrequential) {
 		data.reset();
 		while (data.hasNext() == true) {
-			if (fmeasureObserverAvailable) {
-				getFmeasureForInstance(data.getNextInstance(), true, isPrequential);
-			} else {
-				if (isPrequential)
-					prequentialFmeasures.add(getFmeasureForInstance(data.getNextInstance()));
-				else
-					fmeasures.add(getFmeasureForInstance(data.getNextInstance()));
-			}
+			evaluate(data.getNextInstance(), isPrequential);
 		}
 		data.reset();
+	}
+
+	protected void evaluate(Instance instance, boolean isPrequential) {
+		if (fmeasureObserverAvailable) {
+			getFmeasureForInstance(instance, true, isPrequential);
+		} else {
+			if (isPrequential)
+				prequentialFmeasures.add(getFmeasureForInstance(instance));
+			else
+				fmeasures.add(getFmeasureForInstance(instance));
+		}
 	}
 
 	public UUID getId() {

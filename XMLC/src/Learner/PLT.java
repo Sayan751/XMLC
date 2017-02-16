@@ -130,20 +130,7 @@ public class PLT extends AbstractLearner {
 		this.m = data.getNumberOfLabels();
 		this.d = data.getNumberOfFeatures();
 
-		switch (this.treeType) {
-		case CompleteTree.name:
-			this.tree = new CompleteTree(this.k, this.m);
-			break;
-		case PrecomputedTree.name:
-			this.tree = new PrecomputedTree(this.treeFile);
-			break;
-		case HuffmanTree.name:
-			this.tree = new HuffmanTree(data, this.treeFile);
-			break;
-		default:
-			System.err.println("Unknown tree type!");
-			System.exit(-1);
-		}
+		this.tree = createTree(data);
 		this.t = this.tree.getSize();
 
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(m, properties);
@@ -178,6 +165,21 @@ public class PLT extends AbstractLearner {
 		Arrays.fill(this.scalararray, 1.0);
 	}
 
+	protected Tree createTree(DataManager data) {
+		switch (this.treeType) {
+		case CompleteTree.name:
+			return new CompleteTree(this.k, this.m);
+		case PrecomputedTree.name:
+			return new PrecomputedTree(this.treeFile);
+		case HuffmanTree.name:
+			return new HuffmanTree(data, this.treeFile);
+		default:
+			System.err.println("Unknown tree type!");
+			System.exit(-1);
+		}
+		return null;
+	}
+
 	@Override
 	public void train(DataManager data) {
 		// prequential evaluation.
@@ -198,7 +200,7 @@ public class PLT extends AbstractLearner {
 				HashSet<Integer> negativeTreeIndices = new HashSet<Integer>();
 
 				for (int j = 0; j < instance.y.length; j++) {
-					//Labels start from 0
+					// Labels start from 0
 					if (instance.y[j] < m) {
 						int treeIndex = this.tree.getTreeIndex(instance.y[j]);
 						positiveTreeIndices.add(treeIndex);
@@ -281,6 +283,102 @@ public class PLT extends AbstractLearner {
 		}
 
 		evaluate(data, false);
+	}
+
+	public void train(Instance instance) {
+		train(instance, this.epochs, true);
+	}
+
+	public void train(Instance instance, int epochs, boolean toEvaluate) {
+		// prequential evaluation.
+		if (toEvaluate)
+			evaluate(instance, true);
+
+		for (int ep = 0; ep < epochs; ep++) {
+
+			HashSet<Integer> positiveTreeIndices = new HashSet<Integer>();
+			HashSet<Integer> negativeTreeIndices = new HashSet<Integer>();
+
+			for (int j = 0; j < instance.y.length; j++) {
+				// Labels start from 0
+				int label = instance.y[j];
+				int treeIndex = getTreeNodeIndexForLabel(label, instance);
+				if (label < m) {
+					positiveTreeIndices.add(treeIndex);
+
+					while (treeIndex > 0) {
+						treeIndex = (int) this.tree.getParent(treeIndex);
+						positiveTreeIndices.add(treeIndex);
+					}
+				}
+			}
+
+			if (positiveTreeIndices.size() == 0) {
+				negativeTreeIndices.add(0);
+			} else {
+				for (int positiveNode : positiveTreeIndices) {
+					if (!this.tree.isLeaf(positiveNode)) {
+						for (int childNode : this.tree.getChildNodes(positiveNode)) {
+							if (!positiveTreeIndices.contains(childNode)) {
+								negativeTreeIndices.add(childNode);
+							}
+						}
+					}
+				}
+			}
+
+			for (int j : positiveTreeIndices) {
+
+				double posterior = getPartialPosteriors(instance.x, j);
+				double inc = -(1.0 - posterior);
+
+				updatedPosteriors(instance.x, j, inc);
+			}
+
+			for (int j : negativeTreeIndices) {
+
+				if (j >= this.t)
+					logger.info("ALARM");
+
+				double posterior = getPartialPosteriors(instance.x, j);
+				double inc = -(0.0 - posterior);
+
+				updatedPosteriors(instance.x, j, inc);
+			}
+		}
+
+		numberOfTrainingInstancesSeen++;
+
+		// int zeroW = 0;
+		// double sumW = 0;
+		// int maxNonZero = 0;
+		// int index = 0;
+		// for (double weight : w) {
+		// if (weight == 0)
+		// zeroW++;
+		// else
+		// maxNonZero = index;
+		// sumW += weight;
+		// index++;
+		// }
+		// logger.info("Hash weights (lenght, zeros, nonzeros, ratio, sumW, last
+		// nonzero): " + w.length + ", " + zeroW
+		// + ", " + (w.length - zeroW) + ", " + (double) (w.length - zeroW) /
+		// (double) w.length + ", " + sumW
+		// + ", " + maxNonZero);
+
+		// tuning thresholds from learner is optional as of now. if made
+		// mandatory, then this kind of checks can be removed.
+		if (this.thresholdTuner != null) {
+			tuneThreshold(instance);
+		}
+
+		if (toEvaluate)
+			evaluate(instance, false);
+	}
+
+	protected int getTreeNodeIndexForLabel(int label, Instance instance) {
+		return this.tree.getTreeIndex(label);
 	}
 
 	protected void updatedPosteriors(AVPair[] x, int label, double inc) {

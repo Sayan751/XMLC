@@ -4,9 +4,15 @@ import java.util.ArrayList;
 
 public abstract class Tree {
 
-	protected int k = 2; //k-ary tree
+	/**
+	 * k-ary tree
+	 */
+	protected int k = 2;
 	
-	protected int m = 0; //number of leaves
+	/**
+	 * number of leaves
+	 */
+	protected int m = 0;
 	
 	protected int size = 0; //size of the tree
 	

@@ -24,6 +24,9 @@ public abstract class ThresholdTunerFactory {
 		case OfoFast:
 			retVal = new OfoFastThresholdTuner(numberOfLabels, initOption);
 			break;
+		case AdaptiveOfoFast:
+			retVal = new AdaptiveOfoFastThresholdTuner(numberOfLabels, initOption);
+			break;
 
 		default:
 			logger.info("ThresholdTuner implementation for " + type + " is not yet implmented.");

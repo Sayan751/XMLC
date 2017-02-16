@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import Data.AVPair;
+import Data.Instance;
 import IO.DataManager;
 import event.args.PLTCreationEventArgs;
 import event.args.PLTDiscardedEventArgs;
@@ -54,6 +55,12 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 */
 	private final int minTraingInstances;
 
+	/**
+	 * Weight ([0, 1]) to be applied on fmeasure, while scoring the learner
+	 * before discarding
+	 */
+	private final double alpha;
+
 	public PLTEnsemble2(Properties properties) throws Exception {
 		super(properties);
 
@@ -74,6 +81,10 @@ public class PLTEnsemble2 extends AbstractLearner {
 						Double.toString(Constants.PLTEnsembleDefaultValues.retainmentFraction)));
 		minTraingInstances = Integer.parseInt(properties.getProperty(LearnerInitProperties.minTraingInstances,
 				Integer.toString(Constants.PLTEnsembleDefaultValues.minTraingInstances)));
+
+		alpha = Double.parseDouble(
+				properties.getProperty(LearnerInitProperties.pltEnsembleAlpha,
+						Double.toString(Constants.PLTEnsembleDefaultValues.alpha)));
 	}
 
 	@Override
@@ -111,20 +122,24 @@ public class PLTEnsemble2 extends AbstractLearner {
 		if (data.getNumberOfLabels() > currentNumberOfLabels)
 			addNewPLT(data);
 
-		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+		while (data.hasNext() == true) {
+			Instance instance = data.getNextInstance();
 
-			UUID learnerId = pltCacheEntry.learnerId;
+			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
-			PLT plt = getPLT(learnerId);
-			logger.info("Training " + learnerId);
-			plt.train(data);
+				UUID learnerId = pltCacheEntry.learnerId;
 
-			// Collect and cache required data from plt
-			pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
-			pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+				PLT plt = getPLT(learnerId);
+				logger.info("Training " + learnerId);
+				plt.train(instance);
 
-			// persist all changes happened during the training.
-			learnerRepository.update(learnerId, plt);
+				// Collect and cache required data from plt
+				pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
+				pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+
+				// persist all changes happened during the training.
+				learnerRepository.update(learnerId, plt);
+			}
 		}
 
 		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
@@ -182,9 +197,9 @@ public class PLTEnsemble2 extends AbstractLearner {
 			if (cachedPltDetails.numberOfInstances > minTraingInstances) {
 				pltCache.remove(cachedPltDetails);
 				onPLTDiscarded(cachedPltDetails);
+				fmeasureNew = getTempFMeasureOnData(data, sumFmOld);
+				logger.info("new fmeasure after discarding:" + fmeasureNew);
 			}
-
-			fmeasureNew = getTempFMeasureOnData(data, sumFmOld);
 		}
 	}
 
@@ -200,8 +215,8 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 *         {@code avgFmeasureOfPlt - (numberOfTrainingInstancesSeenByPlt/TotalNumberOfTrainingInstancesSeenSoFar)}
 	 */
 	private double scoringStrategy(PLTPropertiesForCache cachedPltDetails) {
-		return cachedPltDetails.avgFmeasure
-				- ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen());
+		return alpha * cachedPltDetails.avgFmeasure
+				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen());
 	}
 
 	private double getTempFMeasureOnData(DataManager data, double sumFmOld) {
@@ -323,38 +338,6 @@ public class PLTEnsemble2 extends AbstractLearner {
 			predictions.add(learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
 					.getTopkLabels(x, k));
 		}
-
-		// ExecutorService executor = Executors.newWorkStealingPool();
-		// List<Callable<int[]>> tasks = new ArrayList<Callable<int[]>>();
-		//
-		// for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-		// tasks.add(() -> {
-		// logger.info("Getting predictions from " + pltCacheEntry.learnerId);
-		// return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
-		// .getTopkLabels(x, k);
-		// });
-		// }
-		//
-		// try {
-		// predictions = executor.invokeAll(tasks)
-		// .stream()
-		// .map(future -> {
-		// try {
-		// return future.get();
-		// } catch (InterruptedException | ExecutionException e) {
-		// throw new IllegalStateException(e);
-		// }
-		// })
-		// .collect(Collectors.toList());
-		//
-		// executor.shutdown();
-		// executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-		// } catch (InterruptedException e) {
-		// logger.warn(
-		// "Threds interrupted. Prediction took more than " + Integer.MAX_VALUE
-		// + " " + TimeUnit.MILLISECONDS
-		// + " to finish.");
-		// }
 		return predictions;
 	}
 
