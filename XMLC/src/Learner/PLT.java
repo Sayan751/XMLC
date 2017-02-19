@@ -203,8 +203,8 @@ public class PLT extends AbstractLearner {
 				for (int j = 0; j < instance.y.length; j++) {
 					// Labels start from 0
 					int label = instance.y[j];
-					int treeIndex = getTreeNodeIndexForLabel(label, instance);
-					if (label < m) {
+					Integer treeIndex = getTreeNodeIndexForLabel(label, instance);
+					if (treeIndex != null) {
 						positiveTreeIndices.add(treeIndex);
 
 						while (treeIndex > 0) {
@@ -380,8 +380,13 @@ public class PLT extends AbstractLearner {
 			evaluate(instance, false);
 	}
 
-	protected int getTreeNodeIndexForLabel(int label, Instance instance) {
-		return this.tree.getTreeIndex(label);
+	protected Integer getTreeNodeIndexForLabel(int label, Instance instance) {
+		try {
+			return this.tree.getTreeIndex(label);
+		} catch (Exception e) {
+			logger.error(e.toString());
+		}
+		return null;
 	}
 
 	protected void updatedPosteriors(AVPair[] x, int label, double inc) {

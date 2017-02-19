@@ -34,6 +34,7 @@ public class Constants {
 	public static class AdaptivePLTDefaultValues {
 		public static final String isToPreferHighestProbLeaf = "true";
 		public static final String probabilityWeight = "0.5";
+		public static final String isToPreferShallowLeaf = "true";
 	}
 
 	public static class LearnerDefaultValues {
@@ -59,5 +60,6 @@ public class Constants {
 		// AdaptivePLT init properties
 		public static final String isToPreferHighestProbLeaf = "isToPreferHighestProbLeaf";
 		public static final String probabilityWeight = "probabilityWeight";
+		public static final String isToPreferShallowLeaf = "isToPreferShallowLeaf";
 	}
 }

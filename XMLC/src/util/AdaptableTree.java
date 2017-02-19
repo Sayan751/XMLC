@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class AdaptableTree extends Tree {
@@ -54,7 +55,7 @@ public class AdaptableTree extends Tree {
 
 	@Override
 	public int getTreeIndex(int label) {
-		return this.labelToIndex.get(label);
+		return labelToIndex.containsKey(label) ? labelToIndex.get(label) : -1;
 	}
 
 	@Override
@@ -81,6 +82,10 @@ public class AdaptableTree extends Tree {
 					.get();
 	}
 
+	public Set<Integer> getAllLabels() {
+		return labelToIndex.keySet();
+	}
+
 	public int adaptLeaf(int lableIndex, int newLabel) {
 		TreeNode leaf = indexToNode.get(labelToIndex.get(lableIndex));
 		TreeNode parent = leaf.getParent();
@@ -94,7 +99,7 @@ public class AdaptableTree extends Tree {
 		TreeNode newLeaf = new TreeNode(maxTreeIndex, null, newLabel);
 		indexToNode.put(maxTreeIndex, newLeaf);
 		labelToIndex.put(newLabel, maxTreeIndex);
-		
+
 		size++;
 		m++;
 
@@ -181,7 +186,7 @@ public class AdaptableTree extends Tree {
 
 		T.adaptLeaf(0, 700);
 		System.out.println(T);
-		
+
 		// System.out.println("---------------");
 		// T.adaptLeaf(0, 700);
 		// T.printToConsole();
