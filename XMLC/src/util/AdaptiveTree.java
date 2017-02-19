@@ -7,15 +7,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class AdaptableTree extends Tree {
+public class AdaptiveTree extends Tree {
 	TreeNode tree;
 	Map<Integer, TreeNode> indexToNode = new HashMap<Integer, TreeNode>();
 	Map<Integer, Integer> labelToIndex = new HashMap<Integer, Integer>();
 
-	public AdaptableTree() {
+	public AdaptiveTree() {
 	}
 
-	public AdaptableTree(Tree tree, String treeType) throws Exception {
+	public AdaptiveTree(Tree tree, String treeType) throws Exception {
 		// Get the basic details
 		this.m = tree.m;
 		this.k = tree.k;
@@ -27,7 +27,7 @@ public class AdaptableTree extends Tree {
 			populateFromCompleteTree((CompleteTree) tree);
 			break;
 		default:
-			throw new Exception(String.format("AdaptableTree for %s is not yet implemented.", treeType));
+			throw new Exception(String.format("AdaptiveTree for %s is not yet implemented.", treeType));
 		}
 	}
 
@@ -181,7 +181,7 @@ public class AdaptableTree extends Tree {
 	}
 
 	public static void main(String[] args) throws Exception {
-		AdaptableTree T = new AdaptableTree(new CompleteTree(2, 7), CompleteTree.name);
+		AdaptiveTree T = new AdaptiveTree(new CompleteTree(2, 7), CompleteTree.name);
 		System.out.println(T);
 
 		T.adaptLeaf(0, 700);
@@ -192,14 +192,14 @@ public class AdaptableTree extends Tree {
 		// T.printToConsole();
 		//
 		// System.out.println("---------------");
-		// T = new AdaptableTree(new CompleteTree(3, 6), CompleteTree.name);
+		// T = new AdaptiveTree(new CompleteTree(3, 6), CompleteTree.name);
 		// T.printToConsole();
 		// System.out.println("---------------");
 		// T.adaptLeaf(0, 700);
 		// T.printToConsole();
 		//
 		// System.out.println("---------------");
-		// T = new AdaptableTree(new CompleteTree(2, 8), CompleteTree.name);
+		// T = new AdaptiveTree(new CompleteTree(2, 8), CompleteTree.name);
 		// T.printToConsole();
 		// System.out.println("---------------");
 		// T.adaptLeaf(7, 700);

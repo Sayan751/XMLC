@@ -6,9 +6,9 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
-public class AdaptableTreeTest {
+public class AdaptiveTreeTest {
 
-	AdaptableTree T;
+	AdaptiveTree T;
 
 	@Test
 	public void Before_Adapting_Properties_Matches_to_Original_Tree() {
@@ -18,7 +18,7 @@ public class AdaptableTreeTest {
 			CompleteTree tree = new CompleteTree(2, 7);
 
 			// act
-			T = new AdaptableTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name);
 			// System.out.println(T);
 
 			// assert
@@ -40,7 +40,7 @@ public class AdaptableTreeTest {
 		try {
 			// arrange
 			CompleteTree tree = new CompleteTree(2, 7);
-			T = new AdaptableTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name);
 			int depth = T.getTreeDepth();
 
 			// act
@@ -66,7 +66,7 @@ public class AdaptableTreeTest {
 		try {
 			// arrange
 			CompleteTree tree = new CompleteTree(3, 6);
-			T = new AdaptableTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name);
 			int newLabelIndex = 700;
 			int depth = T.getTreeDepth();
 
@@ -94,7 +94,7 @@ public class AdaptableTreeTest {
 		try {
 			// arrange
 			CompleteTree tree = new CompleteTree(3, 9);
-			T = new AdaptableTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name);
 			int newLabelIndex = 700;
 			int depth = T.getTreeDepth();
 

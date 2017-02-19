@@ -16,32 +16,32 @@ public class MurmurHasher implements FeatureHasher {
 
 	private HashFunction hash;
 	private HashFunction sign;
-	private HashFunction[] taskhash;
+	protected ArrayList<HashFunction> taskhash;
 	private HashFunction[] tasksign;
 	private boolean isMultiTask = false;
-	private int nFeatures;
+	protected int nFeatures;
 	private int nTasks;
 
 	public MurmurHasher(int seed, int nFeatures) {
-		
+
 		this.nFeatures = nFeatures;
 		this.hash = new HashFunction(seed, nFeatures);
 		this.sign = new HashFunction(seed + 1);
-		
-		logger.info("#####################################################" );
-		logger.info("#### Murmur hash" );
-		logger.info("#### Num. of hashed features: " + this.nFeatures );
-		logger.info("#####################################################" );
+
+		logger.info("#####################################################");
+		logger.info("#### Murmur hash");
+		logger.info("#### Num. of hashed features: " + this.nFeatures);
+		logger.info("#####################################################");
 	}
 
 	public MurmurHasher(int seed, int nFeatures, int nTasks) {
 		this(seed, nFeatures);
 		this.isMultiTask = true;
 		this.nTasks = nTasks;
-		this.taskhash = new HashFunction[nTasks];
+		this.taskhash = new ArrayList<HashFunction>();// [nTasks];
 		this.tasksign = new HashFunction[nTasks];
 		for (int i = 0; i < nTasks; i++) {
-			this.taskhash[i] = new HashFunction(seed + i, nFeatures);
+			this.taskhash.add(new HashFunction(seed + i, nFeatures));
 			this.tasksign[i] = new HashFunction(seed + nTasks + i);
 		}
 	}
@@ -86,7 +86,8 @@ public class MurmurHasher implements FeatureHasher {
 		}
 		HashMap<Integer, Double> sums = new HashMap<Integer, Double>(this.nFeatures);
 		for (AVPair pair : row) {
-			int hi = this.taskhash[taskid].hash(pair.index);
+			int hi = this.taskhash.get(taskid)
+					.hash(pair.index);
 			double val = sums.containsKey(hi) ? sums.get(hi) : 0.0;
 			sums.put(hi, val + pair.value * this.tasksign[taskid].hash(pair.index));
 		}
@@ -105,7 +106,8 @@ public class MurmurHasher implements FeatureHasher {
 				HashMap<Integer, Double> sums = new HashMap<Integer, Double>(this.nFeatures);
 				for (int t = 0; t < this.nTasks; t++) {
 					for (AVPair pair : data.x[row]) {
-						int hi = this.taskhash[t].hash(pair.index);
+						int hi = this.taskhash.get(t)
+								.hash(pair.index);
 						double val = sums.containsKey(hi) ? sums.get(hi) : 0.0;
 						sums.put(hi, val + pair.value * this.tasksign[t].hash(pair.index));
 					}
@@ -120,25 +122,30 @@ public class MurmurHasher implements FeatureHasher {
 		return result;
 	}
 
-	public int getSign( int label, int feature ) {
-		int value = (label<<1-1)*feature; 
+	public int getSign(int label, int feature) {
+		int value = (label << 1 - 1) * feature;
 		return ((value & 1) == 0) ? -1 : 1;
 	}
-	
-//	public int getSign( int task, int feature ) {
-//		return this.tasksign[task].hash(feature);
-//	}
-	
+
+	// public int getSign( int task, int feature ) {
+	// return this.tasksign[task].hash(feature);
+	// }
+
 	public int getIndex(int task, int feature) {
-		return this.taskhash[task].hash(feature);
+		return this.taskhash.get(task).hash(feature);
 	}
-	
-	
+
 	public static void main(String[] args) {
 		AVPair[] test = new AVPair[3];
-		test[0] = new AVPair(); test[0].index = 0; test[0].value = 0.1;
-		test[1] = new AVPair(); test[1].index = 1; test[1].value = 0.3;
-		test[2] = new AVPair(); test[2].index = 2; test[2].value = 0.5;
+		test[0] = new AVPair();
+		test[0].index = 0;
+		test[0].value = 0.1;
+		test[1] = new AVPair();
+		test[1].index = 1;
+		test[1].value = 0.3;
+		test[2] = new AVPair();
+		test[2].index = 2;
+		test[2].value = 0.5;
 		MurmurHasher fh = new MurmurHasher(0, 2);
 		AVPair[] result = fh.transformRowSparse(test);
 		for (AVPair p : result) {
@@ -175,8 +182,8 @@ public class MurmurHasher implements FeatureHasher {
 		input.m = 2;
 		input.y = new int[][] { { 0, 1 }, { 1, 0 } };
 		input.x = new AVPair[][] {
-			{ new AVPair(0, 0.1), new AVPair(2, -0.3) },
-			{ new AVPair(1, 0.2), new AVPair(2, 0.05) }
+				{ new AVPair(0, 0.1), new AVPair(2, -0.3) },
+				{ new AVPair(1, 0.2), new AVPair(2, 0.05) }
 		};
 		AVTable cv_table = fh.transformSparse(input);
 		for (int i = 0; i < cv_table.n; i++) {

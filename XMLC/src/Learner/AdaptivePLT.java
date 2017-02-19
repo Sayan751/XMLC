@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Properties;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,8 +22,9 @@ import com.google.common.primitives.Ints;
 import Data.ComparablePair;
 import Data.Instance;
 import IO.DataManager;
+import preprocessing.IAdaptiveHasher;
 import threshold.IAdaptiveTuner;
-import util.AdaptableTree;
+import util.AdaptiveTree;
 import util.Constants.AdaptivePLTDefaultValues;
 import util.Constants.LearnerInitProperties;
 import util.Tree;
@@ -40,7 +40,6 @@ public class AdaptivePLT extends PLT {
 	 */
 	private double probabilityWeight;
 	private boolean isToPreferShallowLeaf;
-	private Random random = new Random();
 
 	public AdaptivePLT() {
 	}
@@ -57,9 +56,18 @@ public class AdaptivePLT extends PLT {
 	}
 
 	@Override
+	public void allocateClassifiers(DataManager data) {
+		super.allocateClassifiers(data);
+		if ((IAdaptiveHasher) fh == null) {
+			logger.error("Feature hasher must be of type IAdaptiveHasher");
+			System.exit(-1);
+		}
+	}
+
+	@Override
 	protected Tree createTree(DataManager data) {
 		try {
-			return new AdaptableTree(super.createTree(data), treeType);
+			return new AdaptiveTree(super.createTree(data), treeType);
 		} catch (Exception e) {
 			logger.error("Error in creating tree", e);
 		}
@@ -77,7 +85,7 @@ public class AdaptivePLT extends PLT {
 		// choose a label and adapt
 		PriorityQueue<ComparablePair> positiveLabelsAndPosteriors = getPositiveLabelsAndPosteriors(instance.x);
 		int chosenLabelIndex = chooseLabel(positiveLabelsAndPosteriors, this.tree, instance);
-		int newLeafIndex = ((AdaptableTree) this.tree).adaptLeaf(chosenLabelIndex, label);
+		int newLeafIndex = ((AdaptiveTree) this.tree).adaptLeaf(chosenLabelIndex, label);
 
 		t = tree.getSize();
 		m = this.tree.getNumberOfLeaves();
@@ -111,7 +119,7 @@ public class AdaptivePLT extends PLT {
 	 */
 	private int chooseLabel(PriorityQueue<ComparablePair> labelsAndPosteriors, Tree tree, Instance instance) {
 
-		AdaptableTree adaptableTree = ((AdaptableTree) tree);
+		AdaptiveTree adaptableTree = ((AdaptiveTree) tree);
 		int retVal;
 
 		if (!labelsAndPosteriors.isEmpty()) {
@@ -143,7 +151,7 @@ public class AdaptivePLT extends PLT {
 	 * @param adaptableTree
 	 * @return
 	 */
-	private int chooseFromTree(AdaptableTree adaptableTree) {
+	private int chooseFromTree(AdaptiveTree adaptableTree) {
 		int retVal;
 		double treeDepth = adaptableTree.getTreeDepth();
 		retVal = adaptableTree.getAllLabels()
@@ -174,7 +182,7 @@ public class AdaptivePLT extends PLT {
 	 * @return
 	 */
 	private int chooseFromPredictedPositives(PriorityQueue<ComparablePair> labelsAndPosteriors,
-			AdaptableTree adaptableTree) {
+			AdaptiveTree adaptableTree) {
 		int retVal;
 		double treeDepth = adaptableTree.getTreeDepth();
 
@@ -225,11 +233,13 @@ public class AdaptivePLT extends PLT {
 		List<Double> scalararrayList = Arrays.stream(scalararray)
 				.boxed()
 				.collect(Collectors.toList());
+		IAdaptiveHasher adaptiveFh = (IAdaptiveHasher) fh;
 		for (int i = 0; i < growth; i++) {
 			biasList.add(0.0);
 			thresholdList.add(0.5);
 			TarrayList.add(1);
 			scalararrayList.add(1.0);
+			adaptiveFh.adaptForNewTask();
 		}
 		// biases.addAll(Collections.nCopies(growth, 0.0));
 		bias = Doubles.toArray(biasList);
