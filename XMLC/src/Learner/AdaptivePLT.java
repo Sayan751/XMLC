@@ -131,15 +131,7 @@ public class AdaptivePLT extends PLT {
 					.collect(Collectors.toCollection(HashSet<Integer>::new));
 			ys.retainAll(adaptableTree.getAllLabels());
 
-			if (!ys.isEmpty()) {
-				retVal = ys.stream()
-						.findAny()
-						.get()
-						.intValue();
-			} else {
-				/*else pickup a leaf from the tree  which is either the shallowest or deepest.*/
-				retVal = chooseFromTree(adaptableTree);
-			}
+			retVal = chooseFromTree(adaptableTree, ys);
 		}
 		return retVal;
 	}
@@ -151,10 +143,11 @@ public class AdaptivePLT extends PLT {
 	 * @param adaptableTree
 	 * @return
 	 */
-	private int chooseFromTree(AdaptiveTree adaptableTree) {
+	private int chooseFromTree(AdaptiveTree adaptableTree, Set<Integer> labels) {
 		int retVal;
 		double treeDepth = adaptableTree.getTreeDepth();
-		retVal = adaptableTree.getAllLabels()
+		Set<Integer> labelSet = (labels != null && !labels.isEmpty()) ? labels : adaptableTree.getAllLabels();
+		retVal = labelSet
 				.stream()
 				.map(label -> {
 					double relativeDepth = adaptableTree.getNodeDepth(adaptableTree.getTreeIndex(label))

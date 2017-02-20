@@ -60,7 +60,6 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 				&& bInit != null && bInit.length > 0 && bInit.length == numberOfLabels) {
 
 			IntStream.range(0, numberOfLabels)
-					.parallel()
 					.forEach(label -> accomodateNewLabel(label, aInit[label], bInit[label]));
 
 			logger.info("#### a[] and b[] are initialized with predefined values");
@@ -68,7 +67,6 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 		} else {
 
 			IntStream.range(0, numberOfLabels)
-					.parallel()
 					.forEach(label -> accomodateNewLabel(label));
 
 			logger.info("#### a[] seed: " + aSeed);
