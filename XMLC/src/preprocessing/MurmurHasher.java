@@ -22,6 +22,9 @@ public class MurmurHasher implements FeatureHasher {
 	protected int nFeatures;
 	private int nTasks;
 
+	public MurmurHasher() {
+	}
+
 	public MurmurHasher(int seed, int nFeatures) {
 
 		this.nFeatures = nFeatures;
@@ -132,7 +135,8 @@ public class MurmurHasher implements FeatureHasher {
 	// }
 
 	public int getIndex(int task, int feature) {
-		return this.taskhash.get(task).hash(feature);
+		return this.taskhash.get(task)
+				.hash(feature);
 	}
 
 	public static void main(String[] args) {

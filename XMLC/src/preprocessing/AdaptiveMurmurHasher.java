@@ -6,6 +6,9 @@ public class AdaptiveMurmurHasher extends MurmurHasher implements IAdaptiveHashe
 
 	private int seed;
 
+	public AdaptiveMurmurHasher() {
+	}
+
 	public AdaptiveMurmurHasher(int seed, int nFeatures, int nTasks) {
 		super(seed, nFeatures, nTasks);
 		this.seed = seed;

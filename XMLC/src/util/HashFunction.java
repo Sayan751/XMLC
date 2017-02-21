@@ -5,6 +5,9 @@ public class HashFunction {
 	private int period;
 	private boolean isSign;
 
+	public HashFunction() {
+	}
+
 	public HashFunction(int seed, int period) throws IllegalArgumentException {
 		if ((period & 1) != 0) {
 			throw new IllegalArgumentException("Period needs to be power of 2.");
@@ -33,15 +36,16 @@ public class HashFunction {
 		h1 = h1 * 5 + 0xe6546b64;
 		h1 ^= 4;
 		h1 ^= h1 >>> 16;
-        h1 *= 0x85ebca6b;
-        h1 ^= h1 >>> 13;
-        h1 *= 0xc2b2ae35;
-        h1 ^= h1 >>> 16;
+		h1 *= 0x85ebca6b;
+		h1 ^= h1 >>> 13;
+		h1 *= 0xc2b2ae35;
+		h1 ^= h1 >>> 16;
 		return h1;
 	}
 
 	public int hash(int index) {
-		if (this.isSign) return (this.murmurhash(index) & 1) * 2 - 1;
+		if (this.isSign)
+			return (this.murmurhash(index) & 1) * 2 - 1;
 		return this.murmurhash(index) & (this.period - 1);
 	}
 }

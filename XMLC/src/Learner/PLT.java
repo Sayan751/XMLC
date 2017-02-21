@@ -21,10 +21,13 @@ import IO.DataManager;
 import preprocessing.FeatureHasher;
 import preprocessing.FeatureHasherFactory;
 import threshold.ThresholdTunerFactory;
+import threshold.ThresholdTunerInitOption;
+import threshold.ThresholdTuners;
 import util.CompleteTree;
 import util.HuffmanTree;
 import util.PrecomputedTree;
 import util.Tree;
+import util.Constants.LearnerInitProperties;
 
 public class PLT extends AbstractLearner {
 	private static final long serialVersionUID = 1L;
@@ -67,6 +70,8 @@ public class PLT extends AbstractLearner {
 	protected double scalar = 1.0;
 	protected double lambda = 0.00001;
 	protected int epochs = 1;
+	private ThresholdTuners tunerType;
+	private ThresholdTunerInitOption tunerInitOption;
 
 	public PLT() {
 		super();
@@ -108,6 +113,13 @@ public class PLT extends AbstractLearner {
 		this.treeFile = this.properties.getProperty("treeFile", null);
 		logger.info("#### tree file name " + this.treeFile);
 
+		tunerType = this.properties.containsKey(LearnerInitProperties.tunerType)
+				? ThresholdTuners.valueOf(this.properties.getProperty(LearnerInitProperties.tunerType))
+				: ThresholdTuners.None;
+
+		tunerInitOption = (ThresholdTunerInitOption) properties
+				.get(LearnerInitProperties.tunerInitOption);
+
 		System.out.println("#####################################################");
 
 	}
@@ -133,7 +145,7 @@ public class PLT extends AbstractLearner {
 		this.tree = createTree(data);
 		this.t = this.tree.getSize();
 
-		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(m, properties);
+		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
 		if (thresholdTuner != null)
 			logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
 					.getName());
@@ -293,6 +305,7 @@ public class PLT extends AbstractLearner {
 	}
 
 	public void train(Instance instance, int epochs, boolean toEvaluate) {
+		logger.info("Epochs: " + epochs);
 		// prequential evaluation.
 		if (toEvaluate)
 			evaluate(instance, true);

@@ -42,6 +42,13 @@ public class Constants {
 		public static final int defaultK = 5;
 	}
 
+	public static class PLTEnsembleBoostedDefaultValues {
+		public static final String pltEnsembleBoostedSize = "10";
+		public static final String maxBranchingFactor = "5";
+		public static final String fZero = "0.001";
+		public static final String minEpochs = "30";
+	}
+
 	public static class LearnerInitProperties {
 		public static final String individualPLTProperties = "individualPLTProperties";
 		public static final String minTraingInstances = "minTraingInstances";
@@ -61,5 +68,11 @@ public class Constants {
 		public static final String isToPreferHighestProbLeaf = "isToPreferHighestProbLeaf";
 		public static final String probabilityWeight = "probabilityWeight";
 		public static final String isToPreferShallowLeaf = "isToPreferShallowLeaf";
+
+		// Boosted Ensemble PLT init properties
+		public static final String pltEnsembleBoostedSize = "pltEnsembleBoostedSize";
+		public static final String maxBranchingFactor = "maxBranchingFactor";
+		public static final String fZero = "fZero";
+		public static final String minEpochs = "minEpoch";
 	}
 }

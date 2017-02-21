@@ -25,6 +25,7 @@ import event.listeners.IPLTCreatedListener;
 import event.listeners.IPLTDiscardedListener;
 import interfaces.ILearnerRepository;
 import util.Constants;
+import util.PLTPropertiesForCache;
 import util.Constants.LearnerInitProperties;
 
 public class PLTEnsemble2 extends AbstractLearner {
@@ -377,24 +378,5 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		pltDiscardedListeners.stream()
 				.forEach(listener -> listener.onPLTDiscarded(this, args));
-	}
-
-	class PLTPropertiesForCache {
-		UUID learnerId;
-		int numberOfInstances;
-		int numberOfLabels;
-		double avgFmeasure;
-
-		public PLTPropertiesForCache(UUID learnerId, int numberOfLabels) {
-			this.learnerId = learnerId;
-			this.numberOfLabels = numberOfLabels;
-		}
-
-		public PLTPropertiesForCache(UUID learnerId, int numberOfLabels, int numberOfInstances,
-				double avgFmeasure) {
-			this(learnerId, numberOfLabels);
-			this.numberOfInstances = numberOfInstances;
-			this.avgFmeasure = avgFmeasure;
-		}
 	}
 }

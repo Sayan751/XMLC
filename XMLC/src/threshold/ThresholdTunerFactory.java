@@ -18,6 +18,11 @@ public abstract class ThresholdTunerFactory {
 
 		ThresholdTunerInitOption initOption = (ThresholdTunerInitOption) properties
 				.get(LearnerInitProperties.tunerInitOption);
+		return createThresholdTuner(numberOfLabels, type, initOption);
+	}
+
+	public static ThresholdTuner createThresholdTuner(int numberOfLabels, ThresholdTuners type,
+			ThresholdTunerInitOption initOption) {
 		ThresholdTuner retVal = null;
 
 		switch (type) {
