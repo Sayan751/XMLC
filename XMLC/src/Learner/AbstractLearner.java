@@ -82,6 +82,7 @@ public abstract class AbstractLearner implements Serializable {
 	protected boolean fmeasureObserverAvailable;
 
 	private UUID id;
+	protected boolean shuffleLabels;
 
 	// abstract functions
 	public abstract void allocateClassifiers(DataManager data);
@@ -180,6 +181,9 @@ public abstract class AbstractLearner implements Serializable {
 
 		if (fmeasureObserverAvailable)
 			addInstanceProcessedListener(fmeasureObserver);
+
+		shuffleLabels = Boolean.parseBoolean(
+				properties.getProperty(LearnerInitProperties.shuffleLabels, LearnerDefaultValues.shuffleLabels));
 	}
 
 	// naive implementation checking all labels

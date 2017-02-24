@@ -305,7 +305,7 @@ public class PLT extends AbstractLearner {
 	}
 
 	public void train(Instance instance, int epochs, boolean toEvaluate) {
-		logger.info("Epochs: " + epochs);
+
 		// prequential evaluation.
 		if (toEvaluate)
 			evaluate(instance, true);

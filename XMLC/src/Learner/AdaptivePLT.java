@@ -67,7 +67,7 @@ public class AdaptivePLT extends PLT {
 	@Override
 	protected Tree createTree(DataManager data) {
 		try {
-			return new AdaptiveTree(super.createTree(data), treeType);
+			return new AdaptiveTree(super.createTree(data), treeType, shuffleLabels);
 		} catch (Exception e) {
 			logger.error("Error in creating tree", e);
 		}

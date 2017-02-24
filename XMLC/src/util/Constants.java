@@ -40,6 +40,7 @@ public class Constants {
 	public static class LearnerDefaultValues {
 		public static final boolean isToComputeFmeasureOnTopK = true;
 		public static final int defaultK = 5;
+		public static final String shuffleLabels = "false";
 	}
 
 	public static class PLTEnsembleBoostedDefaultValues {
@@ -74,5 +75,6 @@ public class Constants {
 		public static final String maxBranchingFactor = "maxBranchingFactor";
 		public static final String fZero = "fZero";
 		public static final String minEpochs = "minEpoch";
+		public static final String shuffleLabels = "shuffleLabels";
 	}
 }

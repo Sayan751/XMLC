@@ -18,7 +18,7 @@ public class AdaptiveTreeTest {
 			CompleteTree tree = new CompleteTree(2, 7);
 
 			// act
-			T = new AdaptiveTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name, false);
 			// System.out.println(T);
 
 			// assert
@@ -40,7 +40,7 @@ public class AdaptiveTreeTest {
 		try {
 			// arrange
 			CompleteTree tree = new CompleteTree(2, 7);
-			T = new AdaptiveTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name, false);
 			int depth = T.getTreeDepth();
 
 			// act
@@ -66,7 +66,7 @@ public class AdaptiveTreeTest {
 		try {
 			// arrange
 			CompleteTree tree = new CompleteTree(3, 6);
-			T = new AdaptiveTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name, false);
 			int newLabelIndex = 700;
 			int depth = T.getTreeDepth();
 
@@ -94,7 +94,7 @@ public class AdaptiveTreeTest {
 		try {
 			// arrange
 			CompleteTree tree = new CompleteTree(3, 9);
-			T = new AdaptiveTree(tree, CompleteTree.name);
+			T = new AdaptiveTree(tree, CompleteTree.name, false);
 			int newLabelIndex = 700;
 			int depth = T.getTreeDepth();
 

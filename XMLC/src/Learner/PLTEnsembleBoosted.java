@@ -10,11 +10,11 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -26,9 +26,9 @@ import Data.AVPair;
 import Data.Instance;
 import IO.DataManager;
 import interfaces.ILearnerRepository;
-import util.PLTPropertiesForCache;
 import util.Constants.LearnerInitProperties;
 import util.Constants.PLTEnsembleBoostedDefaultValues;
+import util.PLTPropertiesForCache;
 
 public class PLTEnsembleBoosted extends AbstractLearner {
 
@@ -41,6 +41,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	private int maxBranchingFactor;
 	private int minEpochs;
 	private double fZero;
+
 	private static Random random;
 
 	public PLTEnsembleBoosted() {
@@ -69,8 +70,10 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 				PLTEnsembleBoostedDefaultValues.pltEnsembleBoostedSize));
 
 		pltCache = new ArrayList<PLTPropertiesForCache>();
-		for (int i = 0; i < ensembleSize; i++)
-			addNewPLT();
+		IntStream.range(0, ensembleSize)
+				.forEach(i -> addNewPLT());
+
+		logger.info("Ensemble size:" + pltCache.size());
 	}
 
 	private void addNewPLT() {
@@ -81,13 +84,14 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
 
 		// add random branching factor
-		int k = random.ints(1, 2, maxBranchingFactor)
+		int k = maxBranchingFactor == 2 ? maxBranchingFactor : random.ints(1, 2, maxBranchingFactor)
 				.findFirst()
 				.getAsInt();
 		pltProperties.setProperty("k", String.valueOf(k));
 
-		AdaptivePLT plt = new AdaptivePLT(pltProperties);// (Properties)
-															// pltProperties.clone()
+		pltProperties.setProperty(LearnerInitProperties.shuffleLabels, String.valueOf(shuffleLabels));
+
+		AdaptivePLT plt = new AdaptivePLT(pltProperties);
 		UUID learnerId = learnerRepository.create(plt, getId());
 		pltCache.add(new PLTPropertiesForCache(learnerId));
 	}
@@ -109,30 +113,36 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		evaluate(data, true);
 		int currentDataSetSize = 0;
 		while (data.hasNext()) {
+
 			Instance instance = data.getNextInstance();
-			int epochs = minEpochs;
-			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-
-				UUID learnerId = pltCacheEntry.learnerId;
-				AdaptivePLT learner = getAdaptivePLT(learnerId);
-
-				learner.train(instance, epochs, true);
-				double fm = learner.getFmeasureForInstance(instance, false, false);
-				epochs = getNextEpochsFromFmeasure(fm);
-				logger.info("Current fmeasure: " + fm + ", next epochs: " + epochs);
-
-				// post processing
-				// Collect and cache required data from plt
-				pltCacheEntry.numberOfInstances = learner.getNumberOfTrainingInstancesSeen();
-				pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
-
-				// persist all changes happened during the training.
-				learnerRepository.update(learnerId, learner);
-				currentDataSetSize++;
-			}
+			train(instance);
+			currentDataSetSize++;
 		}
 		numberOfTrainingInstancesSeen += currentDataSetSize;
 		evaluate(data, false);
+	}
+
+	private void train(Instance instance) {
+		int epochs = minEpochs;
+
+		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+
+			UUID learnerId = pltCacheEntry.learnerId;
+			AdaptivePLT learner = getAdaptivePLT(learnerId);
+
+			learner.train(instance, epochs, true);
+			double fm = learner.getFmeasureForInstance(instance, false, false);
+			epochs = getNextEpochsFromFmeasure(fm);
+			logger.info("Current fmeasure: " + fm + ", next epochs: " + epochs);
+
+			// post processing
+			// Collect and cache required data from plt
+			pltCacheEntry.numberOfInstances = learner.getNumberOfTrainingInstancesSeen();
+			pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
+
+			// persist all changes happened during the training.
+			learnerRepository.update(learnerId, learner);
+		}
 	}
 
 	private AdaptivePLT getAdaptivePLT(UUID learnerId) {
@@ -214,7 +224,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 					.toArray();
 		}
 
-		return null;
+		return new int[0];
 	}
 
 	private List<int[]> getTopkLabelsFromEnsemble(AVPair[] x, int k) {

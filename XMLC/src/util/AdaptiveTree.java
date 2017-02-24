@@ -1,9 +1,11 @@
 package util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,7 +17,7 @@ public class AdaptiveTree extends Tree {
 	public AdaptiveTree() {
 	}
 
-	public AdaptiveTree(Tree tree, String treeType) throws Exception {
+	public AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels) throws Exception {
 		// Get the basic details
 		this.m = tree.m;
 		this.k = tree.k;
@@ -29,6 +31,23 @@ public class AdaptiveTree extends Tree {
 		default:
 			throw new Exception(String.format("AdaptiveTree for %s is not yet implemented.", treeType));
 		}
+
+		if (shuffleLabels)
+			shuffleLabels();
+	}
+
+	private void shuffleLabels() {
+		List<Integer> indices = new ArrayList<Integer>(labelToIndex.values());
+		Collections.shuffle(indices);
+
+		int index = 0;
+		for (Entry<Integer, Integer> entry : labelToIndex.entrySet()) {
+			Integer nodeIndex = indices.get(index);
+			entry.setValue(nodeIndex);
+			indexToNode.get(nodeIndex).label = entry.getKey();
+			index++;
+		}
+
 	}
 
 	@Override
@@ -180,29 +199,4 @@ public class AdaptiveTree extends Tree {
 		return sb.toString();
 	}
 
-	public static void main(String[] args) throws Exception {
-		AdaptiveTree T = new AdaptiveTree(new CompleteTree(2, 7), CompleteTree.name);
-		System.out.println(T);
-
-		T.adaptLeaf(0, 700);
-		System.out.println(T);
-
-		// System.out.println("---------------");
-		// T.adaptLeaf(0, 700);
-		// T.printToConsole();
-		//
-		// System.out.println("---------------");
-		// T = new AdaptiveTree(new CompleteTree(3, 6), CompleteTree.name);
-		// T.printToConsole();
-		// System.out.println("---------------");
-		// T.adaptLeaf(0, 700);
-		// T.printToConsole();
-		//
-		// System.out.println("---------------");
-		// T = new AdaptiveTree(new CompleteTree(2, 8), CompleteTree.name);
-		// T.printToConsole();
-		// System.out.println("---------------");
-		// T.adaptLeaf(7, 700);
-		// T.printToConsole();
-	}
 }
