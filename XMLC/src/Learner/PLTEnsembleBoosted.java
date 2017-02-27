@@ -41,6 +41,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	private int maxBranchingFactor;
 	private int minEpochs;
 	private double fZero;
+	private boolean isToAggregateByMajorityVote;
 
 	private static Random random;
 
@@ -56,6 +57,10 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		if (learnerRepository == null)
 			throw new Exception(
 					"Invalid initialization parameters. A required learnerRepository object is not provided.");
+
+		isToAggregateByMajorityVote = Boolean
+				.parseBoolean(properties.getProperty(LearnerInitProperties.isToAggregateByMajorityVote,
+						PLTEnsembleBoostedDefaultValues.isToAggregateByMajorityVote));
 
 		fZero = Double.parseDouble(properties.getProperty(LearnerInitProperties.fZero,
 				PLTEnsembleBoostedDefaultValues.fZero));
@@ -210,7 +215,8 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 							entry -> (entry.getValue()
 									.stream()
 									.reduce(0.0,
-											(sum, cachedPltDetails) -> sum += cachedPltDetails.avgFmeasure,
+											(sum, cachedPltDetails) -> sum += isToAggregateByMajorityVote ? 1
+													: cachedPltDetails.avgFmeasure,
 											(sum1, sum2) -> sum1 + sum2))
 									/ ensembleSize));
 
