@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,6 +168,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 		double alpha = 0.5 * log((1 - fm) / fm);
 		epochs = toIntExact(round(minEpochs * exp(alpha)));
+
+		PoissonDistribution pois = new PoissonDistribution(epochs);
+		epochs = pois.sample();
 
 		return epochs < minEpochs ? minEpochs : epochs;
 	}
