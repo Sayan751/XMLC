@@ -182,4 +182,15 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 
 		return thresholdsToChange;
 	}
+
+	@Override
+	public double getMacroFmeasure() {
+
+		return (2.0 / (double) aThresholdNumerators.size()) * aThresholdNumerators.keySet()
+				.stream()
+				.map(label -> (double) aThresholdNumerators.get(label) / (double) bThresholdDenominators.get(label))
+				.reduce(0.0,
+						(sum, item) -> sum += item,
+						(sum1, sum2) -> sum1 + sum2);
+	}
 }

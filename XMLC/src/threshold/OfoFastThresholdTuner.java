@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -218,5 +219,18 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 		}
 
 		return thresholdsToChange;
+	}
+
+	@Override
+	public double getMacroFmeasure() {
+
+		int length = aThresholdNumerators.length;
+
+		return (2.0 / (double) length) * IntStream.range(0, length)
+				.boxed()
+				.map(index -> (double) aThresholdNumerators[index] / (double) bThresholdDenominators[index])
+				.reduce(0.0,
+						(sum, item) -> sum += item,
+						(sum1, sum2) -> sum1 + sum2);
 	}
 }

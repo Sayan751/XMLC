@@ -29,6 +29,7 @@ public class Constants {
 		public static final double retainmentFraction = 0.1;
 		public static final int minTraingInstances = 1000;
 		public static final double alpha = 0.5;
+		public static final String preferMacroFmeasure = "true";
 	}
 
 	public static class AdaptivePLTDefaultValues {
@@ -49,6 +50,7 @@ public class Constants {
 		public static final String fZero = "0.001";
 		public static final String minEpochs = "30";
 		public static final String isToAggregateByMajorityVote = "false";
+		public static final String preferMacroFmeasure = "true";
 	}
 
 	public static class LearnerInitProperties {
@@ -78,5 +80,6 @@ public class Constants {
 		public static final String minEpochs = "minEpoch";
 		public static final String shuffleLabels = "shuffleLabels";
 		public static final String isToAggregateByMajorityVote = "isToAggregateByMajorityVote";
+		public static final String preferMacroFmeasure = "preferMacroFmeasure";
 	}
 }

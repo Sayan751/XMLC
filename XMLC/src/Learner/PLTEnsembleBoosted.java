@@ -43,6 +43,10 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	private int minEpochs;
 	private double fZero;
 	private boolean isToAggregateByMajorityVote;
+	/**
+	 * Prefer macro fmeasure for aggregating result.
+	 */
+	private boolean preferMacroFmeasure;
 
 	private static Random random;
 
@@ -62,6 +66,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		isToAggregateByMajorityVote = Boolean
 				.parseBoolean(properties.getProperty(LearnerInitProperties.isToAggregateByMajorityVote,
 						PLTEnsembleBoostedDefaultValues.isToAggregateByMajorityVote));
+
+		preferMacroFmeasure = Boolean.parseBoolean(properties.getProperty(LearnerInitProperties.preferMacroFmeasure,
+				PLTEnsembleBoostedDefaultValues.preferMacroFmeasure));
 
 		fZero = Double.parseDouble(properties.getProperty(LearnerInitProperties.fZero,
 				PLTEnsembleBoostedDefaultValues.fZero));
@@ -145,6 +152,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			// Collect and cache required data from plt
 			pltCacheEntry.numberOfInstances = learner.getNumberOfTrainingInstancesSeen();
 			pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
+			pltCacheEntry.macroFmeasure = learner.getMacroFmeasure();
 
 			// persist all changes happened during the training.
 			learnerRepository.update(learnerId, learner);
@@ -220,7 +228,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 									.stream()
 									.reduce(0.0,
 											(sum, cachedPltDetails) -> sum += isToAggregateByMajorityVote ? 1
-													: cachedPltDetails.avgFmeasure,
+													: (preferMacroFmeasure
+															? cachedPltDetails.macroFmeasure
+															: cachedPltDetails.avgFmeasure),
 											(sum1, sum2) -> sum1 + sum2))
 									/ ensembleSize));
 

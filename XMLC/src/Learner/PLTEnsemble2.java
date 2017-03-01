@@ -62,6 +62,11 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 */
 	private final double alpha;
 
+	/**
+	 * Prefer macro fmeasure for discarding learners and aggregating result.
+	 */
+	private boolean preferMacroFmeasure;
+
 	public PLTEnsemble2(Properties properties) throws Exception {
 		super(properties);
 
@@ -86,6 +91,9 @@ public class PLTEnsemble2 extends AbstractLearner {
 		alpha = Double.parseDouble(
 				properties.getProperty(LearnerInitProperties.pltEnsembleAlpha,
 						Double.toString(Constants.PLTEnsembleDefaultValues.alpha)));
+
+		preferMacroFmeasure = Boolean.parseBoolean(properties.getProperty(LearnerInitProperties.preferMacroFmeasure,
+				Constants.PLTEnsembleDefaultValues.preferMacroFmeasure));
 	}
 
 	@Override
@@ -137,6 +145,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 				// Collect and cache required data from plt
 				pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
 				pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+				pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
 
 				// persist all changes happened during the training.
 				learnerRepository.update(learnerId, plt);
@@ -216,7 +225,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 *         {@code avgFmeasureOfPlt - (numberOfTrainingInstancesSeenByPlt/TotalNumberOfTrainingInstancesSeenSoFar)}
 	 */
 	private double scoringStrategy(PLTPropertiesForCache cachedPltDetails) {
-		return alpha * cachedPltDetails.avgFmeasure
+		return alpha * (preferMacroFmeasure ? cachedPltDetails.macroFmeasure : cachedPltDetails.avgFmeasure)
 				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen());
 	}
 
@@ -314,7 +323,9 @@ public class PLTEnsemble2 extends AbstractLearner {
 								return (entry.getValue()
 										.stream()
 										.reduce(0.0,
-												(sum, cachedPltDetails) -> sum += cachedPltDetails.avgFmeasure,
+												(sum, cachedPltDetails) -> sum += (preferMacroFmeasure
+														? cachedPltDetails.macroFmeasure
+														: cachedPltDetails.avgFmeasure),
 												(sum1, sum2) -> sum1 + sum2))
 										/ numberOfPltsHavingLabel;
 							}));
@@ -378,5 +389,10 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		pltDiscardedListeners.stream()
 				.forEach(listener -> listener.onPLTDiscarded(this, args));
+	}
+
+	@Override
+	protected void computingFmeasure(Set<Integer> predictedPositives, List<Integer> truePositives,
+			boolean isPrequential) {
 	}
 }

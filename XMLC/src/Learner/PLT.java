@@ -719,4 +719,8 @@ public class PLT extends AbstractLearner {
 
 		return positiveLabels;
 	}
+
+	public double getMacroFmeasure(){
+		return thresholdTuner.getMacroFmeasure();
+	}
 }

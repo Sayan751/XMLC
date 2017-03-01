@@ -389,7 +389,11 @@ public abstract class AbstractLearner implements Serializable {
 				? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
 				: getPositiveLabels(instance.x);
 
-		Set<Integer> intersection = new HashSet<Integer>(Ints.asList(instance.y));
+		List<Integer> truePositives = Ints.asList(instance.y);
+
+		computingFmeasure(predictedPositives, truePositives, isPrequential);
+
+		Set<Integer> intersection = new HashSet<Integer>(truePositives);
 		intersection.retainAll(predictedPositives);
 
 		double retVal = (2.0 * intersection.size()) / (double) (instance.y.length + predictedPositives.size());
@@ -404,6 +408,10 @@ public abstract class AbstractLearner implements Serializable {
 		}
 
 		return retVal;
+	}
+
+	protected void computingFmeasure(Set<Integer> predictedPositives, List<Integer> truePositives,
+			boolean isPrequential) {
 	}
 
 	protected double getFmeasureForInstance(Instance instance) {

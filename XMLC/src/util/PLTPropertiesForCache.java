@@ -7,6 +7,7 @@ public class PLTPropertiesForCache {
 	public int numberOfInstances;
 	public int numberOfLabels;
 	public double avgFmeasure;
+	public double macroFmeasure;
 
 	public PLTPropertiesForCache(UUID learnerId) {
 		this.learnerId = learnerId;
