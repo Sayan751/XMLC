@@ -139,7 +139,7 @@ public class PLT extends AbstractLearner {
 	@Override
 	public void allocateClassifiers(DataManager data) {
 		this.traindata = data;
-		this.m = data.getNumberOfLabels();
+		initializeNumberOfLabels(data);
 		this.d = data.getNumberOfFeatures();
 
 		this.tree = createTree(data);
@@ -175,6 +175,10 @@ public class PLT extends AbstractLearner {
 		this.scalararray = new double[this.t];
 		Arrays.fill(this.Tarray, 1);
 		Arrays.fill(this.scalararray, 1.0);
+	}
+
+	protected void initializeNumberOfLabels(DataManager data) {
+		this.m = data.getNumberOfLabels();
 	}
 
 	protected Tree createTree(DataManager data) {
@@ -219,15 +223,16 @@ public class PLT extends AbstractLearner {
 					if (treeIndex != null) {
 						positiveTreeIndices.add(treeIndex);
 
-						while (treeIndex > 0) {
+						while (treeIndex >= 0) {
 							treeIndex = (int) this.tree.getParent(treeIndex);
-							positiveTreeIndices.add(treeIndex);
+							if (treeIndex > 0)
+								positiveTreeIndices.add(treeIndex);
 						}
 					}
 				}
 
 				if (positiveTreeIndices.size() == 0) {
-					negativeTreeIndices.add(0);
+					negativeTreeIndices.add(this.tree.getRootIndex());
 				} else {
 					for (int positiveNode : positiveTreeIndices) {
 						if (!this.tree.isLeaf(positiveNode)) {
@@ -322,15 +327,16 @@ public class PLT extends AbstractLearner {
 				if (label < m) {
 					positiveTreeIndices.add(treeIndex);
 
-					while (treeIndex > 0) {
+					while (treeIndex >= 0) {
 						treeIndex = (int) this.tree.getParent(treeIndex);
-						positiveTreeIndices.add(treeIndex);
+						if (treeIndex > 0)
+							positiveTreeIndices.add(treeIndex);
 					}
 				}
 			}
 
 			if (positiveTreeIndices.size() == 0) {
-				negativeTreeIndices.add(0);
+				negativeTreeIndices.add(this.tree.getRootIndex());
 			} else {
 				for (int positiveNode : positiveTreeIndices) {
 					if (!this.tree.isLeaf(positiveNode)) {
@@ -720,7 +726,7 @@ public class PLT extends AbstractLearner {
 		return positiveLabels;
 	}
 
-	public double getMacroFmeasure(){
+	public double getMacroFmeasure() {
 		return thresholdTuner.getMacroFmeasure();
 	}
 }

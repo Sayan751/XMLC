@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class AdaptiveTree extends Tree {
-	TreeNode tree;
+	TreeNode root;
 	Map<Integer, TreeNode> indexToNode = new HashMap<Integer, TreeNode>();
 	Map<Integer, Integer> labelToIndex = new HashMap<Integer, Integer>();
 
@@ -88,7 +88,7 @@ public class AdaptiveTree extends Tree {
 	}
 
 	public int getTreeDepth() {
-		return computeTreeDepth(tree);
+		return computeTreeDepth(root);
 	}
 
 	private int computeTreeDepth(TreeNode node) {
@@ -122,7 +122,7 @@ public class AdaptiveTree extends Tree {
 		size++;
 		m++;
 
-		if (parent.children.size() < k) {
+		if (parent != null && parent.children.size() < k) {
 			newLeaf.setParent(parent);
 		} else {
 			maxTreeIndex++;
@@ -134,6 +134,10 @@ public class AdaptiveTree extends Tree {
 
 			size++;
 			numberOfInternalNodes++;
+
+			/*a special case, when the tree starts with only one node (being both root and leaf at the same time)*/
+			if (newParent.getDepth() == 1)
+				root = newParent;
 		}
 		return newLeaf.index;
 	}
@@ -142,8 +146,8 @@ public class AdaptiveTree extends Tree {
 		if (tree != null) {
 			// Start with root
 			int treeIndex = 0;
-			this.tree = new TreeNode(treeIndex);
-			indexToNode.put(treeIndex, this.tree);
+			this.root = new TreeNode(treeIndex);
+			indexToNode.put(treeIndex, this.root);
 
 			List<Integer> nodeList = new ArrayList<Integer>();
 			nodeList.add(treeIndex);
@@ -152,26 +156,36 @@ public class AdaptiveTree extends Tree {
 				treeIndex = nodeList.remove(0);
 				TreeNode parent = indexToNode.get(treeIndex);
 
-				tree.getChildNodes(treeIndex)
-						.stream()
-						.forEach(nodeIndex -> {
+				ArrayList<Integer> childNodes = tree.getChildNodes(treeIndex);
 
-							TreeNode child = new TreeNode(nodeIndex, parent);
+				if (childNodes != null)
+					childNodes
+							.stream()
+							.forEach(nodeIndex -> {
 
-							if (tree.isLeaf(nodeIndex)) {
-								int label = tree.getLabelIndex(nodeIndex);
-								child.label = label;
-								this.labelToIndex.put(label, nodeIndex);
-							} else {
-								nodeList.add(nodeIndex);
-							}
+								TreeNode child = new TreeNode(nodeIndex, parent);
 
-							this.indexToNode.put(nodeIndex, child);
-						});
+								if (tree.isLeaf(nodeIndex)) {
+									manageNodeLabel(child, nodeIndex, tree);
+								} else {
+									nodeList.add(nodeIndex);
+								}
+
+								this.indexToNode.put(nodeIndex, child);
+							});
+				else if (tree.isLeaf(treeIndex)) {
+					manageNodeLabel(parent, treeIndex, tree);
+				}
 			}
 
 		} else
 			throw new Exception("Invalid input tree");
+	}
+
+	private void manageNodeLabel(TreeNode node, Integer nodeIndex, CompleteTree tree) {
+		int label = tree.getLabelIndex(nodeIndex);
+		node.label = label;
+		this.labelToIndex.put(label, nodeIndex);
 	}
 
 	@Override
@@ -194,9 +208,13 @@ public class AdaptiveTree extends Tree {
 		sb.append(size);
 
 		sb.append("\nTree:\n");
-		sb.append(tree.toString());
+		sb.append(root.toString());
 
 		return sb.toString();
 	}
 
+	@Override
+	public int getRootIndex() {
+		return root.index;
+	}
 }

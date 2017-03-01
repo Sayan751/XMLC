@@ -8,35 +8,35 @@ public abstract class Tree {
 	 * k-ary tree
 	 */
 	protected int k = 2;
-	
+
 	/**
 	 * number of leaves
 	 */
 	protected int m = 0;
-	
-	protected int size = 0; //size of the tree
-	
+
+	protected int size = 0; // size of the tree
+
 	protected int numberOfInternalNodes = 0;
-	
+
 	public void initialize(int k, int m) {
-		this.k = k ;
+		this.k = k;
 		this.m = m;
 	}
-	
+
 	abstract public ArrayList<Integer> getChildNodes(int node);
-	
+
 	abstract public int getParent(int node);
-	
-	abstract public boolean isLeaf(int node); 
-	
+
+	abstract public boolean isLeaf(int node);
+
 	abstract public int getTreeIndex(int label);
-	
+
 	abstract public int getLabelIndex(int treeIndex);
-	
+
 	public int getNumberOfLeaves() {
 		return this.m;
 	}
-	
+
 	public int getSize() {
 		return this.size;
 	}
@@ -44,6 +44,11 @@ public abstract class Tree {
 	public int getNumberOfInternalNodes() {
 		return this.numberOfInternalNodes;
 	}
+
 	
-	
+	public int getRootIndex() {
+		// Default assumption is that index of root is 0
+		return 0;
+	}
+
 }
