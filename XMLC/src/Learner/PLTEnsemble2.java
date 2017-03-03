@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -15,6 +17,8 @@ import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.primitives.Ints;
 
 import Data.AVPair;
 import Data.Instance;
@@ -25,8 +29,8 @@ import event.listeners.IPLTCreatedListener;
 import event.listeners.IPLTDiscardedListener;
 import interfaces.ILearnerRepository;
 import util.Constants;
-import util.PLTPropertiesForCache;
 import util.Constants.LearnerInitProperties;
+import util.PLTPropertiesForCache;
 
 public class PLTEnsemble2 extends AbstractLearner {
 	private static final long serialVersionUID = 7193120904682573610L;
@@ -34,7 +38,6 @@ public class PLTEnsemble2 extends AbstractLearner {
 	private static Logger logger = LoggerFactory.getLogger(PLTEnsemble2.class);
 
 	transient private ILearnerRepository learnerRepository;
-	private int currentNumberOfLabels = 0;
 	private List<PLTPropertiesForCache> pltCache;
 
 	transient private Set<IPLTCreatedListener> pltCreatedListeners;
@@ -67,6 +70,8 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 */
 	private boolean preferMacroFmeasure;
 
+	private SortedSet<Integer> labelsSeen;
+
 	public PLTEnsemble2(Properties properties) throws Exception {
 		super(properties);
 
@@ -94,16 +99,19 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		preferMacroFmeasure = Boolean.parseBoolean(properties.getProperty(LearnerInitProperties.preferMacroFmeasure,
 				Constants.PLTEnsembleDefaultValues.preferMacroFmeasure));
+
+		labelsSeen = new TreeSet<Integer>();
 	}
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
-		if (pltCache.isEmpty()) {
-			addNewPLT(data);
-		}
+		// if (pltCache.isEmpty()) {
+		// addNewPLT(data);
+		// }
 	}
 
 	private void addNewPLT(DataManager data) {
+
 		Properties pltProperties = (Properties) properties.get(LearnerInitProperties.individualPLTProperties);
 		pltProperties.put(LearnerInitProperties.isToComputeFmeasureOnTopK, isToComputeFmeasureOnTopK);
 		pltProperties.put(LearnerInitProperties.defaultK, defaultK);
@@ -111,10 +119,9 @@ public class PLTEnsemble2 extends AbstractLearner {
 			pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
 
 		PLT plt = new PLT(pltProperties);
-		plt.allocateClassifiers(data);
+		plt.allocateClassifiers(data, labelsSeen);
 		UUID learnerId = learnerRepository.create(plt, getId());
 		pltCache.add(new PLTPropertiesForCache(learnerId, plt.m));
-		currentNumberOfLabels = data.getNumberOfLabels();
 		onPLTCreated(plt);
 	}
 
@@ -128,11 +135,19 @@ public class PLTEnsemble2 extends AbstractLearner {
 				? pltCache.get(0).numberOfInstances
 				: 0;
 
-		if (data.getNumberOfLabels() > currentNumberOfLabels)
-			addNewPLT(data);
+		// if (data.getNumberOfLabels() > currentNumberOfLabels)
+		// addNewPLT(data);
 
 		while (data.hasNext() == true) {
+
 			Instance instance = data.getNextInstance();
+
+			Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
+
+			if (!labelsSeen.containsAll(truePositives)) {
+				labelsSeen.addAll(truePositives);
+				addNewPLT(data);
+			}
 
 			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 

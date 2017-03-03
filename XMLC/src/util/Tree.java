@@ -45,10 +45,14 @@ public abstract class Tree {
 		return this.numberOfInternalNodes;
 	}
 
-	
 	public int getRootIndex() {
 		// Default assumption is that index of root is 0
 		return 0;
+	}
+
+	public boolean hasLabel(int label) {
+		/*default assumption is labels are received in ordered fashion without gap.*/
+		return label < m;
 	}
 
 }

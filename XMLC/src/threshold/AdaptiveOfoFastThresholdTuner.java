@@ -4,7 +4,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,12 +39,23 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 	public AdaptiveOfoFastThresholdTuner() {
 	}
 
+	public AdaptiveOfoFastThresholdTuner(SortedSet<Integer> labels, ThresholdTunerInitOption thresholdTunerInitOption) {
+		super(labels.size(), thresholdTunerInitOption);
+		init(labels.stream(), thresholdTunerInitOption);
+	}
+
 	public AdaptiveOfoFastThresholdTuner(int numberOfLabels, ThresholdTunerInitOption thresholdTunerInitOption) {
 		super(numberOfLabels, thresholdTunerInitOption);
+		init(IntStream.range(0, this.numberOfLabels)
+				.boxed(), thresholdTunerInitOption);
+	}
+
+	private void init(Stream<Integer> labelStream,
+			ThresholdTunerInitOption thresholdTunerInitOption) {
 
 		logger.info("#####################################################");
 		logger.info("#### OFO Fast");
-		logger.info("#### numberOfLabels: " + numberOfLabels);
+		logger.info("#### numberOfLabels: " + this.numberOfLabels);
 
 		aSeed = thresholdTunerInitOption != null && thresholdTunerInitOption.aSeed != null
 				? thresholdTunerInitOption.aSeed : OFODefaultValues.aSeed;
@@ -56,18 +70,16 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 		int[] bInit = thresholdTunerInitOption.bInit;
 
 		if (thresholdTunerInitOption != null
-				&& aInit != null && aInit.length > 0 && aInit.length == numberOfLabels
-				&& bInit != null && bInit.length > 0 && bInit.length == numberOfLabels) {
+				&& aInit != null && aInit.length > 0 && aInit.length == this.numberOfLabels
+				&& bInit != null && bInit.length > 0 && bInit.length == this.numberOfLabels) {
 
-			IntStream.range(0, numberOfLabels)
-					.forEach(label -> accomodateNewLabel(label, aInit[label], bInit[label]));
+			labelStream.forEach(label -> accomodateNewLabel(label, aInit[label], bInit[label]));
 
 			logger.info("#### a[] and b[] are initialized with predefined values");
 
 		} else {
 
-			IntStream.range(0, numberOfLabels)
-					.forEach(label -> accomodateNewLabel(label));
+			labelStream.forEach(label -> accomodateNewLabel(label));
 
 			logger.info("#### a[] seed: " + aSeed);
 			logger.info("#### b[] seed: " + bSeed);
@@ -121,22 +133,24 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 
 	@Override
 	public Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData) throws Exception {
+		Set<Integer> thresholdsToChange = null;
+		if (tuningData != null) {
 
-		if (tuningData == null)
-			throw new IllegalArgumentException("Incorrect tuning data");
+			@SuppressWarnings("unchecked")
+			List<HashSet<Integer>> predictedLabels = (List<HashSet<Integer>>) tuningData
+					.get(ThresholdTuningDataKeys.predictedLabels);
 
-		@SuppressWarnings("unchecked")
-		List<HashSet<Integer>> predictedLabels = (List<HashSet<Integer>>) tuningData
-				.get(ThresholdTuningDataKeys.predictedLabels);
+			@SuppressWarnings("unchecked")
+			List<HashSet<Integer>> trueLabels = (List<HashSet<Integer>>) tuningData
+					.get(ThresholdTuningDataKeys.trueLabels);
 
-		@SuppressWarnings("unchecked")
-		List<HashSet<Integer>> trueLabels = (List<HashSet<Integer>>) tuningData
-				.get(ThresholdTuningDataKeys.trueLabels);
+			if (predictedLabels == null || trueLabels == null)
+				throw new IllegalArgumentException("Incorrect tuning data. Missing true or predicted labels");
 
-		if (predictedLabels == null || trueLabels == null)
-			throw new IllegalArgumentException("Incorrect tuning data. Missing true or predicted labels");
-
-		HashSet<Integer> thresholdsToChange = tuneAndGetAffectedLabels(predictedLabels, trueLabels);
+			thresholdsToChange = tuneAndGetAffectedLabels(predictedLabels, trueLabels);
+		}
+		if (thresholdsToChange == null)
+			thresholdsToChange = aThresholdNumerators.keySet();
 		HashMap<Integer, Double> sparseThresholds = new HashMap<Integer, Double>();
 
 		for (int label : thresholdsToChange) {
@@ -171,7 +185,7 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 			}
 
 			for (int trueLabel : truePositives) {
-				if (trueLabel < numberOfLabels) {
+				if (bThresholdDenominators.containsKey(trueLabel)) {
 					bThresholdDenominators.put(trueLabel, bThresholdDenominators.get(trueLabel) + 1);
 					thresholdsToChange.add(trueLabel);
 					if (predictedPositives.contains(trueLabel))

@@ -1,6 +1,7 @@
 package threshold;
 
 import java.util.Properties;
+import java.util.SortedSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,26 @@ public abstract class ThresholdTunerFactory {
 			break;
 		case AdaptiveOfoFast:
 			retVal = new AdaptiveOfoFastThresholdTuner(numberOfLabels, initOption);
+			break;
+
+		default:
+			logger.info("ThresholdTuner implementation for " + type + " is not yet implmented.");
+			break;
+		}
+
+		return retVal;
+	}
+
+	public static ThresholdTuner createThresholdTuner(SortedSet<Integer> labels, ThresholdTuners type,
+			ThresholdTunerInitOption initOption) {
+		ThresholdTuner retVal = null;
+
+		switch (type) {
+		case OfoFast:
+			retVal = new OfoFastThresholdTuner(labels.size(), initOption);
+			break;
+		case AdaptiveOfoFast:
+			retVal = new AdaptiveOfoFastThresholdTuner(labels, initOption);
 			break;
 
 		default:

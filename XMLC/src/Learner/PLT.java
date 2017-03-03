@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.Properties;
+import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.apache.commons.math3.analysis.function.Sigmoid;
@@ -23,6 +24,7 @@ import preprocessing.FeatureHasherFactory;
 import threshold.ThresholdTunerFactory;
 import threshold.ThresholdTunerInitOption;
 import threshold.ThresholdTuners;
+import util.AdaptiveTree;
 import util.CompleteTree;
 import util.HuffmanTree;
 import util.PrecomputedTree;
@@ -138,43 +140,64 @@ public class PLT extends AbstractLearner {
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
-		this.traindata = data;
-		initializeNumberOfLabels(data);
-		this.d = data.getNumberOfFeatures();
+		allocateClassifiers(data, null);
+	}
 
-		this.tree = createTree(data);
-		this.t = this.tree.getSize();
+	public void allocateClassifiers(DataManager data, SortedSet<Integer> labels) {
+		try {
+			boolean labelsProvided = labels != null;
+			this.traindata = data;
+			if (labelsProvided)
+				this.m = labels.size();
+			else
+				initializeNumberOfLabels(data);
+			this.d = data.getNumberOfFeatures();
 
-		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
-		if (thresholdTuner != null)
-			logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
-					.getName());
-		else
-			logger.info("#### thresholdTuner can't be instantiated. Threshold will not be tuned during training.");
+			this.tree = createTree(data, labels);
+			this.t = this.tree.getSize();
 
-		logger.info("#### Num. of labels: " + this.m + " Dim: " + this.d);
-		logger.info("#### Num. of node of the trees: " + this.t);
-		logger.info("#####################################################");
+			thresholdTuner = labelsProvided
+					? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
+					: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+			if (thresholdTuner != null)
+				logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
+						.getName());
+			else
+				logger.info("#### thresholdTuner can't be instantiated. Threshold will not be tuned during training.");
 
-		this.fh = FeatureHasherFactory.createFeatureHasher(this.hasher, fhseed, this.hd, this.t);
+			logger.info("#### Num. of labels: " + this.m + " Dim: " + this.d);
+			logger.info("#### Num. of node of the trees: " + this.t);
+			logger.info("#####################################################");
 
-		logger.info("Allocate the learners...");
+			this.fh = FeatureHasherFactory.createFeatureHasher(this.hasher, fhseed, this.hd, this.t);
 
-		this.w = new double[this.hd];
-		this.thresholds = new double[this.t];
-		this.bias = new double[this.t];
+			logger.info("Allocate the learners...");
 
-		for (int i = 0; i < this.t; i++) {
-			this.thresholds[i] = 0.5;
+			this.w = new double[this.hd];
+			this.thresholds = new double[this.t];
+			this.bias = new double[this.t];
+
+			for (int i = 0; i < this.t; i++) {
+				this.thresholds[i] = 0.5;
+			}
+
+			if (thresholdTuner != null) {
+				if (labelsProvided)
+					thresholdTuner.getTunedThresholdsSparse(null)
+							.forEach((label, threshold) -> {
+								setThreshold(label, threshold);
+							});
+				else
+					setThresholds(thresholdTuner.getTunedThresholds(null));
+			}
+
+			this.Tarray = new int[this.t];
+			this.scalararray = new double[this.t];
+			Arrays.fill(this.Tarray, 1);
+			Arrays.fill(this.scalararray, 1.0);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
 		}
-
-		if (thresholdTuner != null)
-			setThresholds(thresholdTuner.getTunedThresholds(null));
-
-		this.Tarray = new int[this.t];
-		this.scalararray = new double[this.t];
-		Arrays.fill(this.Tarray, 1);
-		Arrays.fill(this.scalararray, 1.0);
 	}
 
 	protected void initializeNumberOfLabels(DataManager data) {
@@ -182,15 +205,25 @@ public class PLT extends AbstractLearner {
 	}
 
 	protected Tree createTree(DataManager data) {
-		switch (this.treeType) {
-		case CompleteTree.name:
-			return new CompleteTree(this.k, this.m);
-		case PrecomputedTree.name:
-			return new PrecomputedTree(this.treeFile);
-		case HuffmanTree.name:
-			return new HuffmanTree(data, this.treeFile);
-		default:
-			System.err.println("Unknown tree type!");
+		return createTree(data, null);
+	}
+
+	protected Tree createTree(DataManager data, SortedSet<Integer> labels) {
+		try {
+			switch (this.treeType) {
+			case CompleteTree.name:
+				return labels == null || labels.isEmpty() ? new CompleteTree(this.k, this.m)
+						: new AdaptiveTree(new CompleteTree(this.k, labels.size()), CompleteTree.name, labels);
+			case PrecomputedTree.name:
+				return new PrecomputedTree(this.treeFile);
+			case HuffmanTree.name:
+				return new HuffmanTree(data, this.treeFile);
+			default:
+				System.err.println("Unknown tree type!");
+				System.exit(-1);
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
 			System.exit(-1);
 		}
 		return null;
@@ -324,7 +357,7 @@ public class PLT extends AbstractLearner {
 				// Labels start from 0
 				int label = instance.y[j];
 				int treeIndex = getTreeNodeIndexForLabel(label, instance);
-				if (label < m) {
+				if (this.tree.hasLabel(label)) {
 					positiveTreeIndices.add(treeIndex);
 
 					while (treeIndex >= 0) {
@@ -729,4 +762,5 @@ public class PLT extends AbstractLearner {
 	public double getMacroFmeasure() {
 		return thresholdTuner.getMacroFmeasure();
 	}
+
 }

@@ -64,6 +64,7 @@ public class AdaptivePLT extends PLT {
 		}
 	}
 
+	@Override
 	protected void initializeNumberOfLabels(DataManager data) {
 		/*Start from scratch with only one label (0).*/
 		this.m = 1;

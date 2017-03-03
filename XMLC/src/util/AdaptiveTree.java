@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 
 public class AdaptiveTree extends Tree {
@@ -18,6 +19,21 @@ public class AdaptiveTree extends Tree {
 	}
 
 	public AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels) throws Exception {
+		this(tree, treeType, shuffleLabels, null);
+	}
+
+	public AdaptiveTree(Tree tree, String treeType, SortedSet<Integer> labels) throws Exception {
+		this(tree, treeType, false, labels);
+	}
+
+	private AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels, SortedSet<Integer> labels)
+			throws Exception {
+
+		if (labels != null && !labels.isEmpty() && labels.size() != tree.m)
+			throw new Exception("Size of labels set (" + labels.size()
+					+ ") provided does not match to the number of leaves present in the tree (" + tree.m
+					+ ")");
+
 		// Get the basic details
 		this.m = tree.m;
 		this.k = tree.k;
@@ -26,7 +42,7 @@ public class AdaptiveTree extends Tree {
 
 		switch (treeType) {
 		case CompleteTree.name:
-			populateFromCompleteTree((CompleteTree) tree);
+			populateFromCompleteTree((CompleteTree) tree, labels);
 			break;
 		default:
 			throw new Exception(String.format("AdaptiveTree for %s is not yet implemented.", treeType));
@@ -34,6 +50,7 @@ public class AdaptiveTree extends Tree {
 
 		if (shuffleLabels)
 			shuffleLabels();
+
 	}
 
 	private void shuffleLabels() {
@@ -142,15 +159,20 @@ public class AdaptiveTree extends Tree {
 		return newLeaf.index;
 	}
 
-	private void populateFromCompleteTree(CompleteTree tree) throws Exception {
+	private void populateFromCompleteTree(CompleteTree tree, SortedSet<Integer> labels) throws Exception {
 		if (tree != null) {
-			// Start with root
+			// Start with root (for complete tree it is 0).
 			int treeIndex = 0;
 			this.root = new TreeNode(treeIndex);
 			indexToNode.put(treeIndex, this.root);
 
 			List<Integer> nodeList = new ArrayList<Integer>();
 			nodeList.add(treeIndex);
+
+			boolean labelsProvided = labels != null && !labels.isEmpty();
+			Integer[] labelArr = new Integer[labelsProvided ? labels.size() : 0];
+			if (labelsProvided)
+				labels.toArray(labelArr);
 
 			while (!nodeList.isEmpty()) {
 				treeIndex = nodeList.remove(0);
@@ -166,7 +188,10 @@ public class AdaptiveTree extends Tree {
 								TreeNode child = new TreeNode(nodeIndex, parent);
 
 								if (tree.isLeaf(nodeIndex)) {
-									manageNodeLabel(child, nodeIndex, tree);
+									if (labelsProvided)
+										manageNodeLabel(child, nodeIndex, labelArr[labelToIndex.size()]);
+									else
+										manageNodeLabel(child, nodeIndex, tree);
 								} else {
 									nodeList.add(nodeIndex);
 								}
@@ -174,7 +199,10 @@ public class AdaptiveTree extends Tree {
 								this.indexToNode.put(nodeIndex, child);
 							});
 				else if (tree.isLeaf(treeIndex)) {
-					manageNodeLabel(parent, treeIndex, tree);
+					if (labelsProvided)
+						manageNodeLabel(parent, treeIndex, labelArr[labelToIndex.size()]);
+					else
+						manageNodeLabel(parent, treeIndex, tree);
 				}
 			}
 
@@ -183,7 +211,10 @@ public class AdaptiveTree extends Tree {
 	}
 
 	private void manageNodeLabel(TreeNode node, Integer nodeIndex, CompleteTree tree) {
-		int label = tree.getLabelIndex(nodeIndex);
+		manageNodeLabel(node, nodeIndex, tree.getLabelIndex(nodeIndex));
+	}
+
+	private void manageNodeLabel(TreeNode node, Integer nodeIndex, int label) {
 		node.label = label;
 		this.labelToIndex.put(label, nodeIndex);
 	}
@@ -216,5 +247,10 @@ public class AdaptiveTree extends Tree {
 	@Override
 	public int getRootIndex() {
 		return root.index;
+	}
+
+	@Override
+	public boolean hasLabel(int label) {
+		return getAllLabels().contains(label);
 	}
 }
