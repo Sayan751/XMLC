@@ -23,10 +23,18 @@ import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
+import com.google.common.collect.Sets.SetView;
+import com.google.common.primitives.Ints;
+
 import Data.AVPair;
 import Data.Instance;
 import IO.DataManager;
 import interfaces.ILearnerRepository;
+import threshold.IAdaptiveTuner;
+import threshold.ThresholdTunerFactory;
+import threshold.ThresholdTunerInitOption;
+import threshold.ThresholdTuners;
 import util.Constants.LearnerInitProperties;
 import util.Constants.PLTEnsembleBoostedDefaultValues;
 import util.PLTPropertiesForCache;
@@ -47,8 +55,8 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	 * Prefer macro fmeasure for aggregating result.
 	 */
 	private boolean preferMacroFmeasure;
-
 	private static Random random;
+	private Set<Integer> labelsSeen;
 
 	public PLTEnsembleBoosted() {
 	}
@@ -87,6 +95,16 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 				.forEach(i -> addNewPLT());
 
 		logger.info("Ensemble size:" + pltCache.size());
+
+		Properties pltProperties = (Properties) this.properties.get(LearnerInitProperties.individualPLTProperties);
+		ThresholdTunerInitOption tunerInitOption = (ThresholdTunerInitOption) pltProperties
+				.get(LearnerInitProperties.tunerInitOption);
+		if (tunerInitOption.aSeed == null || tunerInitOption.bSeed == null)
+			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
+		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
+				tunerInitOption);
+
+		labelsSeen = new HashSet<Integer>(Arrays.asList(0));
 	}
 
 	private void addNewPLT() {
@@ -132,6 +150,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			currentDataSetSize++;
 		}
 		numberOfTrainingInstancesSeen += currentDataSetSize;
+
+		tuneThreshold(data);
+
 		evaluate(data, false);
 	}
 
@@ -153,9 +174,19 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			pltCacheEntry.numberOfInstances = learner.getNumberOfTrainingInstancesSeen();
 			pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
 			pltCacheEntry.macroFmeasure = learner.getMacroFmeasure();
+			pltCacheEntry.numberOfLabels = learner.m;
 
 			// persist all changes happened during the training.
 			learnerRepository.update(learnerId, learner);
+		}
+
+		Set<Integer> truePositive = new HashSet<Integer>(Ints.asList(instance.y));
+		SetView<Integer> diff = Sets.difference(truePositive, labelsSeen);
+		if (!diff.isEmpty()) {
+			IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+			diff.forEach(label -> {
+				tuner.accomodateNewLabel(label);
+			});
 		}
 	}
 
@@ -262,4 +293,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		return 0;
 	}
 
+	public double getMacroFmeasure() {
+		return thresholdTuner.getMacroFmeasure();
+	}
 }

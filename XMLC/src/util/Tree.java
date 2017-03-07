@@ -55,4 +55,8 @@ public abstract class Tree {
 		return label < m;
 	}
 
+	public boolean isRoot(int treeIndex) {
+		return treeIndex == getRootIndex();
+	}
+
 }

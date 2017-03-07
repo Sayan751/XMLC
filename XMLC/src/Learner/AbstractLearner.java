@@ -307,7 +307,7 @@ public abstract class AbstractLearner implements Serializable {
 			}
 		} catch (Exception e) {
 			logger.error("Error during tuning the threshlds.", e);
-			e.printStackTrace();
+			System.exit(-1);
 		}
 	}
 
@@ -320,7 +320,7 @@ public abstract class AbstractLearner implements Serializable {
 			}
 		} catch (Exception e) {
 			logger.error("Error during tuning the threshlds.", e);
-			e.printStackTrace();
+			System.exit(-1);
 		}
 	}
 
@@ -331,6 +331,7 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	protected Map<String, Object> createTuningData(DataManager data) {
 		Map<String, Object> retVal = new HashMap<String, Object>();
+		data.reset();
 		switch (thresholdTuner.getTunerType()) {
 		case OfoFast:
 		case AdaptiveOfoFast:
@@ -349,6 +350,7 @@ public abstract class AbstractLearner implements Serializable {
 			break;
 
 		}
+		data.reset();
 		return retVal;
 	}
 
@@ -391,8 +393,6 @@ public abstract class AbstractLearner implements Serializable {
 
 		List<Integer> truePositives = Ints.asList(instance.y);
 
-		computingFmeasure(predictedPositives, truePositives, isPrequential);
-
 		Set<Integer> intersection = new HashSet<Integer>(truePositives);
 		intersection.retainAll(predictedPositives);
 
@@ -408,10 +408,6 @@ public abstract class AbstractLearner implements Serializable {
 		}
 
 		return retVal;
-	}
-
-	protected void computingFmeasure(Set<Integer> predictedPositives, List<Integer> truePositives,
-			boolean isPrequential) {
 	}
 
 	protected double getFmeasureForInstance(Instance instance) {

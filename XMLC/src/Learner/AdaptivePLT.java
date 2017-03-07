@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -69,13 +70,26 @@ public class AdaptivePLT extends PLT {
 		/*Start from scratch with only one label (0).*/
 		this.m = 1;
 	}
-	
+
 	@Override
 	protected Tree createTree(DataManager data) {
 		try {
 			return new AdaptiveTree(super.createTree(data), treeType, shuffleLabels);
 		} catch (Exception e) {
 			logger.error("Error in creating tree", e);
+			System.exit(-1);
+		}
+		return null;
+	}
+
+	@Override
+	protected Tree createTree(DataManager data, SortedSet<Integer> labels) {
+		try {
+			Tree tr = super.createTree(data, labels);
+			return tr instanceof AdaptiveTree ? tr : new AdaptiveTree(tr, treeType, shuffleLabels);
+		} catch (Exception e) {
+			logger.error("Error in creating tree", e);
+			System.exit(-1);
 		}
 		return null;
 	}

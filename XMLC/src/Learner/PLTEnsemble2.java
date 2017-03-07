@@ -1,5 +1,8 @@
 package Learner;
 
+import static java.lang.Math.log;
+import static java.lang.Math.pow;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -18,6 +21,8 @@ import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 
 import Data.AVPair;
@@ -28,12 +33,25 @@ import event.args.PLTDiscardedEventArgs;
 import event.listeners.IPLTCreatedListener;
 import event.listeners.IPLTDiscardedListener;
 import interfaces.ILearnerRepository;
+import threshold.IAdaptiveTuner;
+import threshold.ThresholdTunerFactory;
+import threshold.ThresholdTunerInitOption;
+import threshold.ThresholdTuners;
 import util.Constants;
 import util.Constants.LearnerInitProperties;
+import util.Constants.PLTEnsembleDefaultValues;
 import util.PLTPropertiesForCache;
 
 public class PLTEnsemble2 extends AbstractLearner {
 	private static final long serialVersionUID = 7193120904682573610L;
+
+	public enum PenalizingStrategies {
+		MacroFmMinusRatioOfInstances, AgePlusLogOfInverseMacroFm
+	}
+
+	public enum AgeFunctions {
+		NumberTrainingInstancesBased, NumberOfLabelsBased
+	}
 
 	private static Logger logger = LoggerFactory.getLogger(PLTEnsemble2.class);
 
@@ -71,6 +89,11 @@ public class PLTEnsemble2 extends AbstractLearner {
 	private boolean preferMacroFmeasure;
 
 	private SortedSet<Integer> labelsSeen;
+	private PenalizingStrategies penalizingStrategy;
+	private AgeFunctions ageFunction;
+
+	private int c;
+	private int a;
 
 	public PLTEnsemble2(Properties properties) throws Exception {
 		super(properties);
@@ -100,7 +123,28 @@ public class PLTEnsemble2 extends AbstractLearner {
 		preferMacroFmeasure = Boolean.parseBoolean(properties.getProperty(LearnerInitProperties.preferMacroFmeasure,
 				Constants.PLTEnsembleDefaultValues.preferMacroFmeasure));
 
+		Properties pltProperties = (Properties) this.properties.get(LearnerInitProperties.individualPLTProperties);
+		ThresholdTunerInitOption tunerInitOption = (ThresholdTunerInitOption) pltProperties
+				.get(LearnerInitProperties.tunerInitOption);
+		if (tunerInitOption.aSeed == null || tunerInitOption.bSeed == null)
+			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
+		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
+				tunerInitOption);
+
 		labelsSeen = new TreeSet<Integer>();
+
+		penalizingStrategy = this.properties.containsKey(LearnerInitProperties.penalizingStrategy)
+				? PenalizingStrategies.valueOf(this.properties.getProperty(LearnerInitProperties.penalizingStrategy))
+				: PenalizingStrategies.AgePlusLogOfInverseMacroFm;
+
+		ageFunction = this.properties.containsKey(LearnerInitProperties.ageFunction)
+				? AgeFunctions.valueOf(this.properties.getProperty(LearnerInitProperties.ageFunction))
+				: AgeFunctions.NumberOfLabelsBased;
+
+		c = Integer
+				.parseInt(this.properties.getProperty(LearnerInitProperties.pltEnsembleC, PLTEnsembleDefaultValues.c));
+		a = Integer
+				.parseInt(this.properties.getProperty(LearnerInitProperties.pltEnsembleA, PLTEnsembleDefaultValues.a));
 	}
 
 	@Override
@@ -128,56 +172,72 @@ public class PLTEnsemble2 extends AbstractLearner {
 	@Override
 	public void train(final DataManager data) {
 
-		double fmeasureOld = getAverageFmeasure(false);
-		double sumFmOld = fmeasureOld * getNumberOfTrainingInstancesSeen();
+		try {
+			double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure() : getAverageFmeasure(false);
+			double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getNumberOfTrainingInstancesSeen();
 
-		int soFar = pltCache.size() > 0
-				? pltCache.get(0).numberOfInstances
-				: 0;
+			int soFar = pltCache.size() > 0
+					? pltCache.get(0).numberOfInstances
+					: 0;
 
-		// if (data.getNumberOfLabels() > currentNumberOfLabels)
-		// addNewPLT(data);
+			// if (data.getNumberOfLabels() > currentNumberOfLabels)
+			// addNewPLT(data);
 
-		while (data.hasNext() == true) {
+			while (data.hasNext() == true) {
 
-			Instance instance = data.getNextInstance();
+				Instance instance = data.getNextInstance();
 
-			Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
+				Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
+				ImmutableSet<Integer> diff = Sets.difference(truePositives, labelsSeen)
+						.immutableCopy();
 
-			if (!labelsSeen.containsAll(truePositives)) {
-				labelsSeen.addAll(truePositives);
-				addNewPLT(data);
+				if (!diff.isEmpty()) {
+					labelsSeen.addAll(truePositives);
+					addNewPLT(data);
+
+					IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+					diff.forEach(label -> {
+						tuner.accomodateNewLabel(label);
+					});
+				}
+
+				for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+
+					UUID learnerId = pltCacheEntry.learnerId;
+
+					PLT plt = getPLT(learnerId);
+					logger.info("Training " + learnerId);
+					plt.train(instance);
+
+					// Collect and cache required data from plt
+					pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
+					pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+					pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
+
+					// persist all changes happened during the training.
+					learnerRepository.update(learnerId, plt);
+				}
 			}
 
-			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+			int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
+			numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
 
-				UUID learnerId = pltCacheEntry.learnerId;
-
-				PLT plt = getPLT(learnerId);
-				logger.info("Training " + learnerId);
-				plt.train(instance);
-
-				// Collect and cache required data from plt
-				pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
-				pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
-				pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
-
-				// persist all changes happened during the training.
-				learnerRepository.update(learnerId, plt);
+			double fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
+					: getTempFMeasureOnData(data, sumFmOld);
+			logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
+					+ Math.abs(fmeasureNew - fmeasureOld));
+			if (fmeasureNew < fmeasureOld && Math.abs(fmeasureNew - fmeasureOld) > epsilon) {
+				discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
 			}
+
+			tuneThreshold(data);
+
+			evaluate(data, false);
+
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			System.exit(-1);
 		}
-
-		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
-		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
-
-		double fmeasureNew = getTempFMeasureOnData(data, sumFmOld);
-		logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
-				+ Math.abs(fmeasureNew - fmeasureOld));
-		if (fmeasureNew < fmeasureOld && Math.abs(fmeasureNew - fmeasureOld) > epsilon) {
-			discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
-		}
-
-		evaluate(data, false);
 	}
 
 	private PLT getPLT(UUID learnerId) {
@@ -203,13 +263,15 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 * @param fmeasureOld
 	 * @param fmeasureNew
 	 * @param data
+	 * @throws Exception
 	 */
 	private void discardLearners(final double sumFmOld, final double fmeasureOld, double fmeasureNew,
-			DataManager data) {
+			DataManager data) throws Exception {
 
-		List<PLTPropertiesForCache> scoredLearnerIds = getScoredLearners().entrySet()
+		List<PLTPropertiesForCache> scoredLearnerIds = getPenalizedLearners().entrySet()
 				.stream()
-				.sorted(Entry.<PLTPropertiesForCache, Double>comparingByValue())
+				.sorted(Entry.<PLTPropertiesForCache, Double>comparingByValue()
+						.reversed())
 				.map(entry -> entry.getKey())
 				.collect(Collectors.toList());
 
@@ -222,26 +284,71 @@ public class PLTEnsemble2 extends AbstractLearner {
 			if (cachedPltDetails.numberOfInstances > minTraingInstances) {
 				pltCache.remove(cachedPltDetails);
 				onPLTDiscarded(cachedPltDetails);
-				fmeasureNew = getTempFMeasureOnData(data, sumFmOld);
+				fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
+						: getTempFMeasureOnData(data, sumFmOld);
+
 				logger.info("new fmeasure after discarding:" + fmeasureNew);
 			}
 		}
 	}
 
-	private Map<PLTPropertiesForCache, Double> getScoredLearners() {
+	private Map<PLTPropertiesForCache, Double> getPenalizedLearners() {
 		return pltCache.stream()
-				.collect(Collectors.toMap(c -> c, c -> scoringStrategy(c)));
+				.collect(Collectors.toMap(c -> c, c -> {
+
+					double retVal = Double.MAX_VALUE;
+					try {
+						switch (penalizingStrategy) {
+						case MacroFmMinusRatioOfInstances:
+							retVal = penalizeByMacroFmMinusRatioOfInstances(c);
+							break;
+						case AgePlusLogOfInverseMacroFm:
+							retVal = penalizeByAgePlusLogOfInverseMacroFm(c);
+							break;
+						default:
+							throw new Exception("Unknown penalizing strategy: " + penalizingStrategy);
+						}
+					} catch (Exception e) {
+						logger.error(e.getMessage(), e);
+						System.exit(-1);
+					}
+					return retVal;
+				}));
 	}
 
 	/**
 	 * 
 	 * @param cachedPltDetails
 	 * @return The score of {@code plt} as
-	 *         {@code avgFmeasureOfPlt - (numberOfTrainingInstancesSeenByPlt/TotalNumberOfTrainingInstancesSeenSoFar)}
+	 *         {@code 1 - (avgFmeasureOfPlt - (numberOfTrainingInstancesSeenByPlt/TotalNumberOfTrainingInstancesSeenSoFar))}
 	 */
-	private double scoringStrategy(PLTPropertiesForCache cachedPltDetails) {
-		return alpha * (preferMacroFmeasure ? cachedPltDetails.macroFmeasure : cachedPltDetails.avgFmeasure)
-				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen());
+	private double penalizeByMacroFmMinusRatioOfInstances(PLTPropertiesForCache cachedPltDetails) {
+		return 1 - (alpha * (preferMacroFmeasure ? cachedPltDetails.macroFmeasure : cachedPltDetails.avgFmeasure)
+				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen()));
+	}
+
+	private double penalizeByAgePlusLogOfInverseMacroFm(PLTPropertiesForCache cachedPltDetails) throws Exception {
+		return alpha * pow(c * age(cachedPltDetails), a)
+				+ (1 - alpha) * pow(log(1 / cachedPltDetails.macroFmeasure), a);
+	}
+
+	private double age(PLTPropertiesForCache cachedPltDetails) throws Exception {
+		double retVal = 0;
+		switch (ageFunction) {
+
+		case NumberOfLabelsBased:
+			retVal = (double) cachedPltDetails.numberOfLabels / (double) labelsSeen.size();
+			break;
+
+		case NumberTrainingInstancesBased:
+			retVal = (double) cachedPltDetails.numberOfInstances / (double) numberOfTrainingInstancesSeen;
+			break;
+
+		default:
+			throw new Exception("Unknown age function: " + ageFunction);
+		}
+
+		return retVal;
 	}
 
 	private double getTempFMeasureOnData(DataManager data, double sumFmOld) {
@@ -251,6 +358,10 @@ public class PLTEnsemble2 extends AbstractLearner {
 		}
 		data.reset();
 		return sumFmOld / getNumberOfTrainingInstancesSeen();
+	}
+
+	private double getTempMacroFMeasureOnData(DataManager data) throws Exception {
+		return thresholdTuner.getTempMacroFmeasure(createTuningData(data));
 	}
 
 	@Override
@@ -406,8 +517,17 @@ public class PLTEnsemble2 extends AbstractLearner {
 				.forEach(listener -> listener.onPLTDiscarded(this, args));
 	}
 
+	public double getMacroFmeasure() {
+		return thresholdTuner.getMacroFmeasure();
+	}
+
 	@Override
-	protected void computingFmeasure(Set<Integer> predictedPositives, List<Integer> truePositives,
-			boolean isPrequential) {
+	protected void tuneThreshold(DataManager data) {
+		try {
+			thresholdTuner.getTunedThresholdsSparse(createTuningData(data));
+		} catch (Exception e) {
+			logger.error("Error during tuning the threshlds.", e);
+			System.exit(-1);
+		}
 	}
 }

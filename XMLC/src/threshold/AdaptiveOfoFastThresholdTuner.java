@@ -189,7 +189,7 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 					bThresholdDenominators.put(trueLabel, bThresholdDenominators.get(trueLabel) + 1);
 					thresholdsToChange.add(trueLabel);
 					if (predictedPositives.contains(trueLabel))
-						aThresholdNumerators.put(trueLabel, bThresholdDenominators.get(trueLabel) + 1);
+						aThresholdNumerators.put(trueLabel, aThresholdNumerators.get(trueLabel) + 1);
 				}
 			}
 		}
@@ -199,12 +199,56 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 
 	@Override
 	public double getMacroFmeasure() {
+		return computeMacroFmeasure(aThresholdNumerators, bThresholdDenominators);
+	}
 
+	private double computeMacroFmeasure(Map<Integer, Integer> aThresholdNumerators,
+			Map<Integer, Integer> bThresholdDenominators) {
 		return (2.0 / (double) aThresholdNumerators.size()) * aThresholdNumerators.keySet()
 				.stream()
 				.map(label -> (double) aThresholdNumerators.get(label) / (double) bThresholdDenominators.get(label))
 				.reduce(0.0,
 						(sum, item) -> sum += item,
 						(sum1, sum2) -> sum1 + sum2);
+	}
+
+	@Override
+	public double getTempMacroFmeasure(Map<String, Object> tuningData) throws Exception {
+
+		@SuppressWarnings("unchecked")
+		List<HashSet<Integer>> predictedLabels = (List<HashSet<Integer>>) tuningData
+				.get(ThresholdTuningDataKeys.predictedLabels);
+
+		@SuppressWarnings("unchecked")
+		List<HashSet<Integer>> trueLabels = (List<HashSet<Integer>>) tuningData
+				.get(ThresholdTuningDataKeys.trueLabels);
+
+		if (predictedLabels == null || trueLabels == null)
+			throw new IllegalArgumentException("Incorrect tuning data. Missing true or predicted labels");
+
+		Map<Integer, Integer> aClone = new HashMap<Integer, Integer>();
+		Map<Integer, Integer> bClone = new HashMap<Integer, Integer>();
+		aClone.putAll(aThresholdNumerators);
+		bClone.putAll(bThresholdDenominators);
+
+		for (int j = 0; j < predictedLabels.size(); j++) {
+
+			HashSet<Integer> predictedPositives = predictedLabels.get(j);
+			HashSet<Integer> truePositives = trueLabels.get(j);
+
+			for (int predictedLabel : predictedPositives) {
+				bClone.put(predictedLabel, bClone.get(predictedLabel) + 1);
+			}
+			for (int trueLabel : truePositives) {
+				if (bClone.containsKey(trueLabel)) {
+					bClone.put(trueLabel, bClone.get(trueLabel) + 1);
+
+					if (predictedPositives.contains(trueLabel))
+						aClone.put(trueLabel, aClone.get(trueLabel) + 1);
+				}
+			}
+		}
+
+		return computeMacroFmeasure(aClone, bClone);
 	}
 }

@@ -30,6 +30,8 @@ public class Constants {
 		public static final int minTraingInstances = 1000;
 		public static final double alpha = 0.5;
 		public static final String preferMacroFmeasure = "true";
+		public static final String c = "100";
+		public static final String a = "3";
 	}
 
 	public static class AdaptivePLTDefaultValues {
@@ -67,6 +69,10 @@ public class Constants {
 		public static final String pltEnsembleAlpha = "pltEnsembleAlpha";
 		public static final String pltEnsembleEpsilon = "pltEnsembleEpsilon";
 		public static final String pltEnsembleRetainmentFraction = "pltEnsembleRetainmentFraction";
+		public static final String penalizingStrategy = "penalizingStrategy";
+		public static final String ageFunction = "ageFunction";
+		public static final String pltEnsembleC = "pltEnsembleC";
+		public static final String pltEnsembleA = "pltEnsembleA";
 
 		// AdaptivePLT init properties
 		public static final String isToPreferHighestProbLeaf = "isToPreferHighestProbLeaf";

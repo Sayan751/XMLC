@@ -653,13 +653,16 @@ public class PLT extends AbstractLearner {
 		int treeIndex = this.tree.getTreeIndex(label);
 		this.thresholds[treeIndex] = t;
 
-		while (treeIndex > 0) {
+		while (!tree.isRoot(treeIndex)) {
 			treeIndex = this.tree.getParent(treeIndex);
+
 			double minThreshold = Double.MAX_VALUE;
 			for (int childNode : this.tree.getChildNodes(treeIndex)) {
-				minThreshold = this.thresholds[childNode] < minThreshold ? this.thresholds[childNode] : minThreshold;
+				minThreshold = this.thresholds[childNode] < minThreshold ? this.thresholds[childNode]
+						: minThreshold;
 			}
 			this.thresholds[treeIndex] = minThreshold;
+
 		}
 
 	}
