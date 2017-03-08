@@ -11,7 +11,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -146,9 +145,7 @@ public class AdaptivePLT extends PLT {
 			retVal = chooseFromPredictedPositives(labelsAndPosteriors, adaptableTree);
 		} else {
 			// choose any label from the instance.y that also exists in the tree
-			Set<Integer> ys = IntStream.of(instance.y)
-					.boxed()
-					.collect(Collectors.toCollection(HashSet<Integer>::new));
+			Set<Integer> ys = new HashSet<Integer>(Ints.asList(instance.y));
 			ys.retainAll(adaptableTree.getAllLabels());
 
 			retVal = chooseFromTree(adaptableTree, ys);
@@ -203,20 +200,20 @@ public class AdaptivePLT extends PLT {
 				.stream()
 				.map(n -> {
 					double leafProb = n.getKey();
-					int labelIndex = n.getValue();
+					int label = n.getValue();
 
-					double labelDepth = adaptableTree.getNodeDepth(adaptableTree.getTreeIndex(labelIndex));
+					double labelDepth = adaptableTree.getNodeDepth(adaptableTree.getTreeIndex(label));
 
 					double score = probabilityWeight * (isToPreferHighestProbLeaf ? leafProb : (1 - leafProb))
 							+ (1 - probabilityWeight) * (1 - labelDepth / treeDepth);
 
-					return new SimpleEntry<Integer, Double>(labelIndex, score);
+					return new SimpleEntry<Integer, Double>(label, score);
 				})
 				.sorted(Entry.<Integer, Double>comparingByValue()
 						.reversed());
-		ArrayList<SimpleEntry<Integer, Double>> test = sorted
-				.collect(Collectors.toCollection(ArrayList<SimpleEntry<Integer, Double>>::new));
-		retVal = test.get(0)
+		retVal = sorted
+				.collect(Collectors.toCollection(ArrayList<SimpleEntry<Integer, Double>>::new))
+				.get(0)
 				.getKey();
 		return retVal;
 	}

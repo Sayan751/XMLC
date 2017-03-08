@@ -1,7 +1,6 @@
 package Learner;
 
-import static java.lang.Math.log;
-import static java.lang.Math.pow;
+import static java.lang.Math.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,24 +64,19 @@ public class PLTEnsemble2 extends AbstractLearner {
 	 * Slack variable for fmeasure comparison.
 	 */
 	private final double epsilon;
-
 	/**
 	 * Fraction of learners to retain in the discarding phase.
 	 */
 	private final double retainmentFraction;
-
 	/**
 	 * Minimum number of training instances an individual PLT should be trained
 	 * on, before discarding.
 	 */
 	private final int minTraingInstances;
-
 	/**
-	 * Weight ([0, 1]) to be applied on fmeasure, while scoring the learner
-	 * before discarding
+	 * Relative weight ([0, 1]) used to penalize the learner during discarding.
 	 */
 	private final double alpha;
-
 	/**
 	 * Prefer macro fmeasure for discarding learners and aggregating result.
 	 */
@@ -149,9 +143,6 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
-		// if (pltCache.isEmpty()) {
-		// addNewPLT(data);
-		// }
 	}
 
 	private void addNewPLT(DataManager data) {
@@ -180,23 +171,20 @@ public class PLTEnsemble2 extends AbstractLearner {
 					? pltCache.get(0).numberOfInstances
 					: 0;
 
-			// if (data.getNumberOfLabels() > currentNumberOfLabels)
-			// addNewPLT(data);
-
 			while (data.hasNext() == true) {
 
 				Instance instance = data.getNextInstance();
 
 				Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
-				ImmutableSet<Integer> diff = Sets.difference(truePositives, labelsSeen)
+				ImmutableSet<Integer> unseen = Sets.difference(truePositives, labelsSeen)
 						.immutableCopy();
 
-				if (!diff.isEmpty()) {
+				if (!unseen.isEmpty()) {
 					labelsSeen.addAll(truePositives);
 					addNewPLT(data);
 
 					IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
-					diff.forEach(label -> {
+					unseen.forEach(label -> {
 						tuner.accomodateNewLabel(label);
 					});
 				}
@@ -211,8 +199,10 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 					// Collect and cache required data from plt
 					pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
-					pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
-					pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
+					if (preferMacroFmeasure)
+						pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
+					else
+						pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
 
 					// persist all changes happened during the training.
 					learnerRepository.update(learnerId, plt);
@@ -226,7 +216,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 					: getTempFMeasureOnData(data, sumFmOld);
 			logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
 					+ Math.abs(fmeasureNew - fmeasureOld));
-			if (fmeasureNew < fmeasureOld && Math.abs(fmeasureNew - fmeasureOld) > epsilon) {
+			if ((fmeasureOld - fmeasureNew) > epsilon) {
 				discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
 			}
 
@@ -277,7 +267,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 
 		int minNumberOfPltsToRetain = (int) Math.ceil(pltCache.size() * retainmentFraction);
 
-		while (/*Math.abs(*/fmeasureOld - fmeasureNew/*)*/ > epsilon && pltCache.size() > minNumberOfPltsToRetain
+		while ((fmeasureOld - fmeasureNew) > epsilon && pltCache.size() > minNumberOfPltsToRetain
 				&& scoredLearnerIds.size() > 0) {
 
 			PLTPropertiesForCache cachedPltDetails = scoredLearnerIds.remove(0);
@@ -328,16 +318,16 @@ public class PLTEnsemble2 extends AbstractLearner {
 	}
 
 	private double penalizeByAgePlusLogOfInverseMacroFm(PLTPropertiesForCache cachedPltDetails) throws Exception {
-		return alpha * pow(c * age(cachedPltDetails), a)
+		return alpha * pow(c * getAgeOfPlt(cachedPltDetails), a)
 				+ (1 - alpha) * pow(log(1 / cachedPltDetails.macroFmeasure), a);
 	}
 
-	private double age(PLTPropertiesForCache cachedPltDetails) throws Exception {
+	private double getAgeOfPlt(PLTPropertiesForCache cachedPltDetails) throws Exception {
 		double retVal = 0;
 		switch (ageFunction) {
 
 		case NumberOfLabelsBased:
-			retVal = (double) cachedPltDetails.numberOfLabels / (double) labelsSeen.size();
+			retVal = exp(-(double) cachedPltDetails.numberOfLabels / (double) labelsSeen.size());
 			break;
 
 		case NumberTrainingInstancesBased:
@@ -376,42 +366,6 @@ public class PLTEnsemble2 extends AbstractLearner {
 					.read(pltCacheEntry.learnerId, PLT.class)
 					.getPositiveLabels(x));
 		}
-
-		// ExecutorService executor = Executors.newWorkStealingPool();
-		// List<Callable<HashSet<Integer>>> tasks = new
-		// ArrayList<Callable<HashSet<Integer>>>();
-		//
-		// for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-		// tasks.add(() -> {
-		// logger.info("Getting predictions from " + pltCacheEntry.learnerId);
-		// return learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
-		// .getPositiveLabels(x);
-		// });
-		// }
-		//
-		// HashSet<Integer> predictions = null;
-		//
-		// try {
-		// predictions = executor.invokeAll(tasks)
-		// .stream()
-		// .flatMap(future -> {
-		// try {
-		// return future.get()
-		// .stream();
-		// } catch (InterruptedException | ExecutionException e) {
-		// throw new IllegalStateException(e);
-		// }
-		// })
-		// .collect(Collectors.toCollection(HashSet::new));
-		//
-		// executor.shutdown();
-		// executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-		// } catch (InterruptedException e) {
-		// logger.warn(
-		// "Threds interrupted. Prediction took more than " + Integer.MAX_VALUE
-		// + " " + TimeUnit.MILLISECONDS
-		// + " to finish.");
-		// }
 
 		return predictions;
 	}
