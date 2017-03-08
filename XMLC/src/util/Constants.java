@@ -24,35 +24,45 @@ public class Constants {
 		public static final int bSeed = 100;
 	}
 
-	public static class PLTEnsembleDefaultValues {
+	public static class PLTAdaptiveEnsembleDefaultValues {
 		public static final double epsilon = 0.1;
 		public static final double retainmentFraction = 0.1;
 		public static final int minTraingInstances = 1000;
 		public static final double alpha = 0.5;
-		public static final String preferMacroFmeasure = "true";
-		public static final String c = "100";
-		public static final String a = "3";
+		public static final boolean preferMacroFmeasure = true;
+		public static final int c = 100;
+		public static final int a = 3;
 	}
 
 	public static class AdaptivePLTDefaultValues {
-		public static final String isToPreferHighestProbLeaf = "true";
-		public static final String probabilityWeight = "0.5";
-		public static final String isToPreferShallowLeaf = "true";
+		public static final boolean isToPreferHighestProbLeaf = true;
+		public static final double alpha = 0.5;
+		public static final boolean isToPreferShallowLeaf = true;
 	}
 
 	public static class LearnerDefaultValues {
 		public static final boolean isToComputeFmeasureOnTopK = true;
 		public static final int defaultK = 5;
-		public static final String shuffleLabels = "false";
+		public static final boolean shuffleLabels = false;
 	}
 
 	public static class PLTEnsembleBoostedDefaultValues {
-		public static final String pltEnsembleBoostedSize = "10";
-		public static final String maxBranchingFactor = "5";
-		public static final String fZero = "0.001";
-		public static final String minEpochs = "30";
-		public static final String isToAggregateByMajorityVote = "false";
-		public static final String preferMacroFmeasure = "true";
+		public static final int ensembleSize = 10;
+		public static final int maxBranchingFactor = 5;
+		public static final double fZero = 0.001;
+		public static final int minEpochs = 30;
+		public static final boolean isToAggregateByMajorityVote = false;
+		public static final boolean preferMacroFmeasure = true;
+	}
+
+	public static class PLTDefaultValues {
+		public static final double gamma = 1.0;
+		public static final double lambda = 1.0;
+		public static final int epochs = 30;
+		public static final String hasher = "Mask";
+		public static final int hd = 50000000;
+		public static final int k = 2;
+		public static final String treeType = "Complete";
 	}
 
 	public static class LearnerInitProperties {
@@ -76,7 +86,7 @@ public class Constants {
 
 		// AdaptivePLT init properties
 		public static final String isToPreferHighestProbLeaf = "isToPreferHighestProbLeaf";
-		public static final String probabilityWeight = "probabilityWeight";
+		public static final String adpativePLTAlpha = "probabilityWeight";
 		public static final String isToPreferShallowLeaf = "isToPreferShallowLeaf";
 
 		// Boosted Ensemble PLT init properties

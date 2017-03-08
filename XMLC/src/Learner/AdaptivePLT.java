@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
-import java.util.Properties;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
@@ -24,9 +23,9 @@ import Data.Instance;
 import IO.DataManager;
 import preprocessing.IAdaptiveHasher;
 import threshold.IAdaptiveTuner;
+import util.AdaptivePLTInitConfiguration;
 import util.AdaptiveTree;
-import util.Constants.AdaptivePLTDefaultValues;
-import util.Constants.LearnerInitProperties;
+import util.LearnerInitConfiguration;
 import util.Tree;
 
 public class AdaptivePLT extends PLT {
@@ -35,24 +34,25 @@ public class AdaptivePLT extends PLT {
 
 	private boolean isToPreferHighestProbLeaf;
 	/**
-	 * Weight to put on probability of leaf, while choosing a leaf to adapt
-	 * (alpha).
+	 * Weight to put on probability of leaf, while choosing a leaf to adapt.
 	 */
-	private double probabilityWeight;
+	private double alpha;
 	private boolean isToPreferShallowLeaf;
 
 	public AdaptivePLT() {
 	}
 
-	public AdaptivePLT(Properties properties) {
-		super(properties);
+	public AdaptivePLT(LearnerInitConfiguration configuration) throws Exception {
+		super(configuration);
 
-		isToPreferHighestProbLeaf = Boolean.parseBoolean(properties.getProperty(
-				LearnerInitProperties.isToPreferHighestProbLeaf, AdaptivePLTDefaultValues.isToPreferHighestProbLeaf));
-		probabilityWeight = Double.parseDouble(properties.getProperty(
-				LearnerInitProperties.probabilityWeight, AdaptivePLTDefaultValues.probabilityWeight));
-		isToPreferShallowLeaf = Boolean.parseBoolean(properties.getProperty(
-				LearnerInitProperties.isToPreferShallowLeaf, AdaptivePLTDefaultValues.isToPreferShallowLeaf));
+		AdaptivePLTInitConfiguration pltConfiguration = configuration instanceof AdaptivePLTInitConfiguration
+				? (AdaptivePLTInitConfiguration) configuration : null;
+		if (pltConfiguration == null)
+			throw new Exception("Invalid init configuration");
+
+		isToPreferHighestProbLeaf = pltConfiguration.isToPreferHighestProbLeaf();
+		alpha = pltConfiguration.getAlpha();
+		isToPreferShallowLeaf = pltConfiguration.isToPreferShallowLeaf();
 	}
 
 	@Override
@@ -204,8 +204,8 @@ public class AdaptivePLT extends PLT {
 
 					double labelDepth = adaptableTree.getNodeDepth(adaptableTree.getTreeIndex(label));
 
-					double score = probabilityWeight * (isToPreferHighestProbLeaf ? leafProb : (1 - leafProb))
-							+ (1 - probabilityWeight) * (1 - labelDepth / treeDepth);
+					double score = alpha * (isToPreferHighestProbLeaf ? leafProb : (1 - leafProb))
+							+ (1 - alpha) * (1 - labelDepth / treeDepth);
 
 					return new SimpleEntry<Integer, Double>(label, score);
 				})

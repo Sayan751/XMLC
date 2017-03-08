@@ -54,64 +54,71 @@ public class GridSearch extends LearnerManager {
 
 		@Override
 		public void run() {
-			this.learner = AbstractLearner.learnerFactory(properties);
+			try {
+				this.learner = AbstractLearner.learnerFactory(properties);
 
-			if (properties.containsKey("seed")) {
-				long seed = Long.parseLong(properties.getProperty("seed"));
-				MasterSeed.setSeed(seed);
+				if (properties.containsKey("seed")) {
+					long seed = Long.parseLong(properties.getProperty("seed"));
+					MasterSeed.setSeed(seed);
+				}
+
+				// train
+				learner.allocateClassifiers(traindata);
+
+				learner.train(traindata);
+
+				Map<String, Double> perfvalidpreck = Evaluator.computePrecisionAtk(learner, validdata, 5);
+				Map<String, Double> perftestpreck = Evaluator.computePrecisionAtk(learner, testdata, 5);
+
+				// valid
+				// ThresholdTuning th = new TTEumFast( learner.m, properties );
+				// learner.tuneThreshold(th, validdata);
+				//
+				// Map<String,Double> perfv =
+				// Evaluator.computePerformanceMetrics(learner, validdata);
+				//
+
+				// generate result
+				this.info += "#### Valid:\n";
+
+				// for ( String perfName : perfv.keySet() ) {
+				// logger.info("##### Valid " + perfName + ": " +
+				// perfv.get(perfName));
+				// this.info += "##### Valid" + perfName + ": " +
+				// perfv.get(perfName) + "\n";
+				// }
+				//
+				//
+				for (String perfName : perfvalidpreck.keySet()) {
+					logger.info("##### Valid " + perfName + ": " + perfvalidpreck.get(perfName));
+					this.info += "##### Valid " + perfName + ": " + perfvalidpreck.get(perfName) + "\n";
+				}
+
+				this.info += "#### Test:\n";
+
+				// Map<String,Double> perf =
+				// Evaluator.computePerformanceMetrics(learner, testdata);
+				//
+				// // generate result
+				// for ( String perfName : perf.keySet() ) {
+				// logger.info("##### Test " + perfName + ": " +
+				// perf.get(perfName));
+				// this.info += "##### Test" + perfName + ": " +
+				// perf.get(perfName)
+				// + "\n";
+				// }
+
+				for (String perfName : perftestpreck.keySet()) {
+					logger.info("##### Test " + perfName + ": " + perftestpreck.get(perfName));
+					this.info += "##### Test " + perfName + ": " + perftestpreck.get(perfName) + "\n";
+				}
+
+				learner = null;
+				ready = true;
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-
-			// train
-			learner.allocateClassifiers(traindata);
-			learner.train(traindata);
-
-			Map<String, Double> perfvalidpreck = Evaluator.computePrecisionAtk(learner, validdata, 5);
-			Map<String, Double> perftestpreck = Evaluator.computePrecisionAtk(learner, testdata, 5);
-
-			// valid
-			// ThresholdTuning th = new TTEumFast( learner.m, properties );
-			// learner.tuneThreshold(th, validdata);
-			//
-			// Map<String,Double> perfv =
-			// Evaluator.computePerformanceMetrics(learner, validdata);
-			//
-
-			// generate result
-			this.info += "#### Valid:\n";
-
-			// for ( String perfName : perfv.keySet() ) {
-			// logger.info("##### Valid " + perfName + ": " +
-			// perfv.get(perfName));
-			// this.info += "##### Valid" + perfName + ": " +
-			// perfv.get(perfName) + "\n";
-			// }
-			//
-			//
-			for (String perfName : perfvalidpreck.keySet()) {
-				logger.info("##### Valid " + perfName + ": " + perfvalidpreck.get(perfName));
-				this.info += "##### Valid " + perfName + ": " + perfvalidpreck.get(perfName) + "\n";
-			}
-
-			this.info += "#### Test:\n";
-
-			// Map<String,Double> perf =
-			// Evaluator.computePerformanceMetrics(learner, testdata);
-			//
-			// // generate result
-			// for ( String perfName : perf.keySet() ) {
-			// logger.info("##### Test " + perfName + ": " +
-			// perf.get(perfName));
-			// this.info += "##### Test" + perfName + ": " + perf.get(perfName)
-			// + "\n";
-			// }
-
-			for (String perfName : perftestpreck.keySet()) {
-				logger.info("##### Test " + perfName + ": " + perftestpreck.get(perfName));
-				this.info += "##### Test " + perfName + ": " + perftestpreck.get(perfName) + "\n";
-			}
-
-			learner = null;
-			ready = true;
 		}
 
 		public String getInfo() {

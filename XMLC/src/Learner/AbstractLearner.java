@@ -33,6 +33,7 @@ import event.listeners.IInstanceProcessedListener;
 import interfaces.IFmeasureObserver;
 import threshold.ThresholdTuner;
 import util.IoUtils;
+import util.LearnerInitConfiguration;
 import util.Constants.ThresholdTuningDataKeys;
 import util.Constants.LearnerDefaultValues;
 import util.Constants.LearnerInitProperties;
@@ -87,7 +88,7 @@ public abstract class AbstractLearner implements Serializable {
 	// abstract functions
 	public abstract void allocateClassifiers(DataManager data);
 
-	public abstract void train(DataManager data);
+	public abstract void train(DataManager data) throws Exception;
 
 	// public abstract Evaluator test( AVTable data );
 	public abstract double getPosteriors(AVPair[] x, int label);
@@ -183,7 +184,21 @@ public abstract class AbstractLearner implements Serializable {
 			addInstanceProcessedListener(fmeasureObserver);
 
 		shuffleLabels = Boolean.parseBoolean(
-				properties.getProperty(LearnerInitProperties.shuffleLabels, LearnerDefaultValues.shuffleLabels));
+				properties.getProperty(LearnerInitProperties.shuffleLabels,
+						String.valueOf(LearnerDefaultValues.shuffleLabels)));
+	}
+
+	public AbstractLearner(LearnerInitConfiguration configuration) {
+
+		isToComputeFmeasureOnTopK = configuration.isToComputeFmeasureOnTopK();
+		defaultK = configuration.getDefaultK();
+		shuffleLabels = configuration.isToShuffleLabels();
+
+		fmeasureObserver = configuration.fmeasureObserver;
+		fmeasureObserverAvailable = fmeasureObserver != null;
+
+		if (fmeasureObserverAvailable)
+			addInstanceProcessedListener(fmeasureObserver);
 	}
 
 	// naive implementation checking all labels

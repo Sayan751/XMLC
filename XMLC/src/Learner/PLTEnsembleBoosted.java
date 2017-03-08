@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -33,10 +32,10 @@ import IO.DataManager;
 import interfaces.ILearnerRepository;
 import threshold.IAdaptiveTuner;
 import threshold.ThresholdTunerFactory;
-import threshold.ThresholdTunerInitOption;
 import threshold.ThresholdTuners;
-import util.Constants.LearnerInitProperties;
-import util.Constants.PLTEnsembleBoostedDefaultValues;
+import util.AdaptivePLTInitConfiguration;
+import util.LearnerInitConfiguration;
+import util.PLTEnsembleBoostedInitConfiguration;
 import util.PLTPropertiesForCache;
 
 public class PLTEnsembleBoosted extends AbstractLearner {
@@ -61,68 +60,66 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	public PLTEnsembleBoosted() {
 	}
 
-	public PLTEnsembleBoosted(Properties properties) throws Exception {
-		super(properties);
+	public PLTEnsembleBoosted(LearnerInitConfiguration configuration) throws Exception {
+		super(configuration);
 
-		random = new Random();
+		PLTEnsembleBoostedInitConfiguration ensembleConfiguration = configuration instanceof PLTEnsembleBoostedInitConfiguration
+				? (PLTEnsembleBoostedInitConfiguration) configuration : null;
+		if (ensembleConfiguration == null)
+			throw new Exception("Invalid init configuration");
 
-		learnerRepository = (ILearnerRepository) properties.get(LearnerInitProperties.learnerRepository);
+		if (ensembleConfiguration.tunerInitOption == null || ensembleConfiguration.tunerInitOption.aSeed == null
+				|| ensembleConfiguration.tunerInitOption.bSeed == null)
+			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
+
+		learnerRepository = ensembleConfiguration.learnerRepository;
 		if (learnerRepository == null)
 			throw new Exception(
 					"Invalid initialization parameters. A required learnerRepository object is not provided.");
 
-		isToAggregateByMajorityVote = Boolean
-				.parseBoolean(properties.getProperty(LearnerInitProperties.isToAggregateByMajorityVote,
-						PLTEnsembleBoostedDefaultValues.isToAggregateByMajorityVote));
+		random = new Random();
 
-		preferMacroFmeasure = Boolean.parseBoolean(properties.getProperty(LearnerInitProperties.preferMacroFmeasure,
-				PLTEnsembleBoostedDefaultValues.preferMacroFmeasure));
+		isToAggregateByMajorityVote = ensembleConfiguration.isToAggregateByMajorityVote();
+		preferMacroFmeasure = ensembleConfiguration.isPreferMacroFmeasure();
+		fZero = ensembleConfiguration.getfZero();
+		minEpochs = ensembleConfiguration.getMinEpochs();
+		maxBranchingFactor = ensembleConfiguration.getMaxBranchingFactor();
 
-		fZero = Double.parseDouble(properties.getProperty(LearnerInitProperties.fZero,
-				PLTEnsembleBoostedDefaultValues.fZero));
+		AdaptivePLTInitConfiguration pltConfiguration = ensembleConfiguration.individualPLTConfiguration;
+		pltConfiguration.setToComputeFmeasureOnTopK(isToComputeFmeasureOnTopK);
+		pltConfiguration.setDefaultK(defaultK);
+		if (fmeasureObserverAvailable)
+			pltConfiguration.fmeasureObserver = fmeasureObserver;
+		pltConfiguration.setshuffleLabels(shuffleLabels);
 
-		minEpochs = Integer.parseInt(properties.getProperty(LearnerInitProperties.minEpochs,
-				PLTEnsembleBoostedDefaultValues.minEpochs));
-
-		maxBranchingFactor = Integer.parseInt(properties.getProperty(LearnerInitProperties.maxBranchingFactor,
-				PLTEnsembleBoostedDefaultValues.maxBranchingFactor));
-
-		int ensembleSize = Integer.parseInt(properties.getProperty(LearnerInitProperties.pltEnsembleBoostedSize,
-				PLTEnsembleBoostedDefaultValues.pltEnsembleBoostedSize));
-
+		int ensembleSize = ensembleConfiguration.getEnsembleSize();
 		pltCache = new ArrayList<PLTPropertiesForCache>();
 		IntStream.range(0, ensembleSize)
-				.forEach(i -> addNewPLT());
+				.forEach(i -> {
+					try {
+						addNewPLT(pltConfiguration);
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
+				});
 
 		logger.info("Ensemble size:" + pltCache.size());
 
-		Properties pltProperties = (Properties) this.properties.get(LearnerInitProperties.individualPLTProperties);
-		ThresholdTunerInitOption tunerInitOption = (ThresholdTunerInitOption) pltProperties
-				.get(LearnerInitProperties.tunerInitOption);
-		if (tunerInitOption.aSeed == null || tunerInitOption.bSeed == null)
-			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
-				tunerInitOption);
+				ensembleConfiguration.tunerInitOption);
 
 		labelsSeen = new HashSet<Integer>(Arrays.asList(0));
 	}
 
-	private void addNewPLT() {
-		Properties pltProperties = (Properties) properties.get(LearnerInitProperties.individualPLTProperties);
-		pltProperties.put(LearnerInitProperties.isToComputeFmeasureOnTopK, isToComputeFmeasureOnTopK);
-		pltProperties.put(LearnerInitProperties.defaultK, defaultK);
-		if (fmeasureObserverAvailable)
-			pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
+	private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) throws Exception {
 
 		// add random branching factor
 		int k = maxBranchingFactor == 2 ? maxBranchingFactor : random.ints(1, 2, maxBranchingFactor)
 				.findFirst()
 				.getAsInt();
-		pltProperties.setProperty("k", String.valueOf(k));
+		pltConfiguration.setK(k);
 
-		pltProperties.setProperty(LearnerInitProperties.shuffleLabels, String.valueOf(shuffleLabels));
-
-		AdaptivePLT plt = new AdaptivePLT(pltProperties);
+		AdaptivePLT plt = new AdaptivePLT(pltConfiguration);
 		UUID learnerId = learnerRepository.create(plt, getId());
 		pltCache.add(new PLTPropertiesForCache(learnerId));
 	}

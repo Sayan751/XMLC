@@ -27,6 +27,8 @@ import threshold.ThresholdTuners;
 import util.AdaptiveTree;
 import util.CompleteTree;
 import util.HuffmanTree;
+import util.LearnerInitConfiguration;
+import util.PLTInitConfiguration;
 import util.PrecomputedTree;
 import util.Tree;
 import util.Constants.LearnerInitProperties;
@@ -124,6 +126,41 @@ public class PLT extends AbstractLearner {
 
 		System.out.println("#####################################################");
 
+	}
+
+	public PLT(LearnerInitConfiguration configuration) throws Exception {
+		super(configuration);
+
+		PLTInitConfiguration pltConfiguration = configuration instanceof PLTInitConfiguration
+				? (PLTInitConfiguration) configuration : null;
+		if (pltConfiguration == null)
+			throw new Exception("Invalid init configuration");
+
+		// learning rate
+		this.gamma = pltConfiguration.getGamma();
+
+		// scalar
+		this.lambda = pltConfiguration.getLambda();
+
+		// epochs
+		this.epochs = pltConfiguration.getEpochs();
+
+		// epochs
+		this.hasher = pltConfiguration.getHasher();
+
+		this.hd = pltConfiguration.getHd();
+
+		// k-ary tree
+		this.k = pltConfiguration.getK();
+
+		// tree type (Complete, Precomputed, Huffman)
+		this.treeType = pltConfiguration.getTreeType();
+
+		// tree file name
+		this.treeFile = pltConfiguration.treeFile;
+
+		tunerType = pltConfiguration.tunerType;
+		tunerInitOption = pltConfiguration.tunerInitOption;
 	}
 
 	public void printParameters() {

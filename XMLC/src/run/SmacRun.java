@@ -68,34 +68,39 @@ public class SmacRun {
 			main.readTestData();
 			main.run();
 		} catch (Throwable e) {
-			logger.error("Unexpected exception occured.",e);
+			logger.error("Unexpected exception occured.", e);
 			e.printStackTrace();
 		}
 	}
 
 	private void run() {
-		properties.setProperty("gamma", Double.toString(gamma));
-		properties.setProperty("lambda", Double.toString(lambda));
-		properties.setProperty("k", Integer.toString(k));
-		AbstractLearner learner = AbstractLearner.learnerFactory(properties);
+		try {
+			properties.setProperty("gamma", Double.toString(gamma));
+			properties.setProperty("lambda", Double.toString(lambda));
+			properties.setProperty("k", Integer.toString(k));
+			AbstractLearner learner = AbstractLearner.learnerFactory(properties);
 
-		learner.allocateClassifiers(traindata);
-		learner.train(traindata);
-//		try {
-//			learner.savemodel("model.saved");
-//			learner = AbstractLearner.loadmodel("model.saved");
-//		} catch (IOException | ClassNotFoundException e) {
-//			e.printStackTrace();
-//		}
-		
-		Map<String, Double> perftestpreck = Evaluator.computePrecisionAtk(learner, testdata, 1);
-		if (perftestpreck.size() > 1) {
-			throw new IllegalArgumentException("There may be only one result for this experiment");
-		} else {
-			for (String perfName : perftestpreck.keySet()) {
-				System.out.println("Result for SMAC: SUCCESS, 0, 0, " + (1 - perftestpreck.get(perfName)) + ", 0");
-				logger.info("Performance is: {}", perftestpreck.get(perfName));
+			learner.allocateClassifiers(traindata);
+			learner.train(traindata);
+			// try {
+			// learner.savemodel("model.saved");
+			// learner = AbstractLearner.loadmodel("model.saved");
+			// } catch (IOException | ClassNotFoundException e) {
+			// e.printStackTrace();
+			// }
+
+			Map<String, Double> perftestpreck = Evaluator.computePrecisionAtk(learner, testdata, 1);
+			if (perftestpreck.size() > 1) {
+				throw new IllegalArgumentException("There may be only one result for this experiment");
+			} else {
+				for (String perfName : perftestpreck.keySet()) {
+					System.out.println("Result for SMAC: SUCCESS, 0, 0, " + (1 - perftestpreck.get(perfName)) + ", 0");
+					logger.info("Performance is: {}", perftestpreck.get(perfName));
+				}
 			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 

@@ -1,6 +1,8 @@
 package Learner;
 
-import static java.lang.Math.*;
+import static java.lang.Math.exp;
+import static java.lang.Math.log;
+import static java.lang.Math.pow;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -34,23 +35,16 @@ import event.listeners.IPLTDiscardedListener;
 import interfaces.ILearnerRepository;
 import threshold.IAdaptiveTuner;
 import threshold.ThresholdTunerFactory;
-import threshold.ThresholdTunerInitOption;
 import threshold.ThresholdTuners;
-import util.Constants;
-import util.Constants.LearnerInitProperties;
-import util.Constants.PLTEnsembleDefaultValues;
+import util.LearnerInitConfiguration;
+import util.PLTAdaptiveEnsembleAgeFunctions;
+import util.PLTAdaptiveEnsembleInitConfiguration;
+import util.PLTAdaptiveEnsemblePenalizingStrategies;
+import util.PLTInitConfiguration;
 import util.PLTPropertiesForCache;
 
 public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private static final long serialVersionUID = 7193120904682573610L;
-
-	public enum PenalizingStrategies {
-		MacroFmMinusRatioOfInstances, AgePlusLogOfInverseMacroFm
-	}
-
-	public enum AgeFunctions {
-		NumberTrainingInstancesBased, NumberOfLabelsBased
-	}
 
 	private static Logger logger = LoggerFactory.getLogger(PLTAdaptiveEnsemble.class);
 
@@ -83,16 +77,27 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private boolean preferMacroFmeasure;
 
 	private SortedSet<Integer> labelsSeen;
-	private PenalizingStrategies penalizingStrategy;
-	private AgeFunctions ageFunction;
+	private PLTAdaptiveEnsemblePenalizingStrategies penalizingStrategy;
+	private PLTAdaptiveEnsembleAgeFunctions ageFunction;
 
 	private int c;
 	private int a;
 
-	public PLTAdaptiveEnsemble(Properties properties) throws Exception {
-		super(properties);
+	private PLTInitConfiguration pltConfiguration;
 
-		learnerRepository = (ILearnerRepository) properties.get(LearnerInitProperties.learnerRepository);
+	public PLTAdaptiveEnsemble(LearnerInitConfiguration configuration) throws Exception {
+		super(configuration);
+
+		PLTAdaptiveEnsembleInitConfiguration ensembleConfiguration = configuration instanceof PLTAdaptiveEnsembleInitConfiguration
+				? (PLTAdaptiveEnsembleInitConfiguration) configuration : null;
+		if (ensembleConfiguration == null)
+			throw new Exception("Invalid init configuration");
+
+		if (ensembleConfiguration.tunerInitOption == null || ensembleConfiguration.tunerInitOption.aSeed == null
+				|| ensembleConfiguration.tunerInitOption.bSeed == null)
+			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
+
+		learnerRepository = ensembleConfiguration.learnerRepository;
 		if (learnerRepository == null)
 			throw new Exception(
 					"Invalid initialization parameters. A required learnerRepository object is not provided.");
@@ -100,60 +105,36 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		pltCache = new ArrayList<PLTPropertiesForCache>();
 		pltCreatedListeners = new HashSet<IPLTCreatedListener>();
 		pltDiscardedListeners = new HashSet<IPLTDiscardedListener>();
-
-		epsilon = Double.parseDouble(
-				properties.getProperty(LearnerInitProperties.pltEnsembleEpsilon,
-						Double.toString(Constants.PLTEnsembleDefaultValues.epsilon)));
-		retainmentFraction = Double
-				.parseDouble(properties.getProperty(LearnerInitProperties.pltEnsembleRetainmentFraction,
-						Double.toString(Constants.PLTEnsembleDefaultValues.retainmentFraction)));
-		minTraingInstances = Integer.parseInt(properties.getProperty(LearnerInitProperties.minTraingInstances,
-				Integer.toString(Constants.PLTEnsembleDefaultValues.minTraingInstances)));
-
-		alpha = Double.parseDouble(
-				properties.getProperty(LearnerInitProperties.pltEnsembleAlpha,
-						Double.toString(Constants.PLTEnsembleDefaultValues.alpha)));
-
-		preferMacroFmeasure = Boolean.parseBoolean(properties.getProperty(LearnerInitProperties.preferMacroFmeasure,
-				Constants.PLTEnsembleDefaultValues.preferMacroFmeasure));
-
-		Properties pltProperties = (Properties) this.properties.get(LearnerInitProperties.individualPLTProperties);
-		ThresholdTunerInitOption tunerInitOption = (ThresholdTunerInitOption) pltProperties
-				.get(LearnerInitProperties.tunerInitOption);
-		if (tunerInitOption.aSeed == null || tunerInitOption.bSeed == null)
-			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
-		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
-				tunerInitOption);
-
 		labelsSeen = new TreeSet<Integer>();
 
-		penalizingStrategy = this.properties.containsKey(LearnerInitProperties.penalizingStrategy)
-				? PenalizingStrategies.valueOf(this.properties.getProperty(LearnerInitProperties.penalizingStrategy))
-				: PenalizingStrategies.AgePlusLogOfInverseMacroFm;
+		epsilon = ensembleConfiguration.getEpsilon();
+		retainmentFraction = ensembleConfiguration.getRetainmentFraction();
+		minTraingInstances = ensembleConfiguration.getMinTraingInstances();
+		alpha = ensembleConfiguration.getAlpha();
+		preferMacroFmeasure = ensembleConfiguration.isPreferMacroFmeasure();
 
-		ageFunction = this.properties.containsKey(LearnerInitProperties.ageFunction)
-				? AgeFunctions.valueOf(this.properties.getProperty(LearnerInitProperties.ageFunction))
-				: AgeFunctions.NumberOfLabelsBased;
+		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
+				ensembleConfiguration.tunerInitOption);
 
-		c = Integer
-				.parseInt(this.properties.getProperty(LearnerInitProperties.pltEnsembleC, PLTEnsembleDefaultValues.c));
-		a = Integer
-				.parseInt(this.properties.getProperty(LearnerInitProperties.pltEnsembleA, PLTEnsembleDefaultValues.a));
+		penalizingStrategy = ensembleConfiguration.getPenalizingStrategy();
+		ageFunction = ensembleConfiguration.getAgeFunction();
+
+		c = ensembleConfiguration.getC();
+		a = ensembleConfiguration.getA();
+
+		pltConfiguration = ensembleConfiguration.individualPLTProperties;
+		pltConfiguration.setToComputeFmeasureOnTopK(isToComputeFmeasureOnTopK);
+		pltConfiguration.setDefaultK(defaultK);
+		if (fmeasureObserverAvailable)
+			pltConfiguration.fmeasureObserver = fmeasureObserver;
 	}
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
 	}
 
-	private void addNewPLT(DataManager data) {
-
-		Properties pltProperties = (Properties) properties.get(LearnerInitProperties.individualPLTProperties);
-		pltProperties.put(LearnerInitProperties.isToComputeFmeasureOnTopK, isToComputeFmeasureOnTopK);
-		pltProperties.put(LearnerInitProperties.defaultK, defaultK);
-		if (fmeasureObserverAvailable)
-			pltProperties.put(LearnerInitProperties.fmeasureObserver, fmeasureObserver);
-
-		PLT plt = new PLT(pltProperties);
+	private void addNewPLT(DataManager data) throws Exception {
+		PLT plt = new PLT(pltConfiguration);
 		plt.allocateClassifiers(data, labelsSeen);
 		UUID learnerId = learnerRepository.create(plt, getId());
 		pltCache.add(new PLTPropertiesForCache(learnerId, plt.m));
@@ -161,73 +142,67 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	}
 
 	@Override
-	public void train(final DataManager data) {
+	public void train(final DataManager data) throws Exception {
 
-		try {
-			double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure() : getAverageFmeasure(false);
-			double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getNumberOfTrainingInstancesSeen();
+		double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure() : getAverageFmeasure(false);
+		double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getNumberOfTrainingInstancesSeen();
 
-			int soFar = pltCache.size() > 0
-					? pltCache.get(0).numberOfInstances
-					: 0;
+		int soFar = pltCache.size() > 0
+				? pltCache.get(0).numberOfInstances
+				: 0;
 
-			while (data.hasNext() == true) {
+		while (data.hasNext() == true) {
 
-				Instance instance = data.getNextInstance();
+			Instance instance = data.getNextInstance();
 
-				Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
-				ImmutableSet<Integer> unseen = Sets.difference(truePositives, labelsSeen)
-						.immutableCopy();
+			Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
+			ImmutableSet<Integer> unseen = Sets.difference(truePositives, labelsSeen)
+					.immutableCopy();
 
-				if (!unseen.isEmpty()) {
-					labelsSeen.addAll(truePositives);
-					addNewPLT(data);
+			if (!unseen.isEmpty()) {
+				labelsSeen.addAll(truePositives);
+				addNewPLT(data);
 
-					IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
-					unseen.forEach(label -> {
-						tuner.accomodateNewLabel(label);
-					});
-				}
-
-				for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-
-					UUID learnerId = pltCacheEntry.learnerId;
-
-					PLT plt = getPLT(learnerId);
-					logger.info("Training " + learnerId);
-					plt.train(instance);
-
-					// Collect and cache required data from plt
-					pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
-					if (preferMacroFmeasure)
-						pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
-					else
-						pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
-
-					// persist all changes happened during the training.
-					learnerRepository.update(learnerId, plt);
-				}
+				IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+				unseen.forEach(label -> {
+					tuner.accomodateNewLabel(label);
+				});
 			}
 
-			int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
-			numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
+			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
-			double fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
-					: getTempFMeasureOnData(data, sumFmOld);
-			logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
-					+ Math.abs(fmeasureNew - fmeasureOld));
-			if ((fmeasureOld - fmeasureNew) > epsilon) {
-				discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
+				UUID learnerId = pltCacheEntry.learnerId;
+
+				PLT plt = getPLT(learnerId);
+				logger.info("Training " + learnerId);
+				plt.train(instance);
+
+				// Collect and cache required data from plt
+				pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
+				if (preferMacroFmeasure)
+					pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
+				else
+					pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+
+				// persist all changes happened during the training.
+				learnerRepository.update(learnerId, plt);
 			}
-
-			tuneThreshold(data);
-
-			evaluate(data, false);
-
-		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
-			System.exit(-1);
 		}
+
+		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
+		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
+
+		double fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
+				: getTempFMeasureOnData(data, sumFmOld);
+		logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
+				+ Math.abs(fmeasureNew - fmeasureOld));
+		if ((fmeasureOld - fmeasureNew) > epsilon) {
+			discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
+		}
+
+		tuneThreshold(data);
+
+		evaluate(data, false);
 	}
 
 	private PLT getPLT(UUID learnerId) {
