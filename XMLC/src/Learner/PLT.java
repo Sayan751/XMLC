@@ -1,5 +1,6 @@
 package Learner;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.PriorityQueue;
@@ -181,60 +182,56 @@ public class PLT extends AbstractLearner {
 	}
 
 	public void allocateClassifiers(DataManager data, SortedSet<Integer> labels) {
-		try {
-			boolean labelsProvided = labels != null;
-			this.traindata = data;
-			if (labelsProvided)
-				this.m = labels.size();
-			else
-				initializeNumberOfLabels(data);
-			this.d = data.getNumberOfFeatures();
+		boolean labelsProvided = labels != null;
+		this.traindata = data;
+		if (labelsProvided)
+			this.m = labels.size();
+		else
+			initializeNumberOfLabels(data);
+		this.d = data.getNumberOfFeatures();
 
-			this.tree = createTree(data, labels);
-			this.t = this.tree.getSize();
+		this.tree = createTree(data, labels);
+		this.t = this.tree.getSize();
 
-			thresholdTuner = labelsProvided
-					? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
-					: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
-			if (thresholdTuner != null)
-				logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
-						.getName());
-			else
-				logger.info("#### thresholdTuner can't be instantiated. Threshold will not be tuned during training.");
+		thresholdTuner = labelsProvided
+				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
+				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+		if (thresholdTuner != null)
+			logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
+					.getName());
+		else
+			logger.info("#### thresholdTuner can't be instantiated. Threshold will not be tuned during training.");
 
-			logger.info("#### Num. of labels: " + this.m + " Dim: " + this.d);
-			logger.info("#### Num. of node of the trees: " + this.t);
-			logger.info("#####################################################");
+		logger.info("#### Num. of labels: " + this.m + " Dim: " + this.d);
+		logger.info("#### Num. of node of the trees: " + this.t);
+		logger.info("#####################################################");
 
-			this.fh = FeatureHasherFactory.createFeatureHasher(this.hasher, fhseed, this.hd, this.t);
+		this.fh = FeatureHasherFactory.createFeatureHasher(this.hasher, fhseed, this.hd, this.t);
 
-			logger.info("Allocate the learners...");
+		logger.info("Allocate the learners...");
 
-			this.w = new double[this.hd];
-			this.thresholds = new double[this.t];
-			this.bias = new double[this.t];
+		this.w = new double[this.hd];
+		this.thresholds = new double[this.t];
+		this.bias = new double[this.t];
 
-			for (int i = 0; i < this.t; i++) {
-				this.thresholds[i] = 0.5;
-			}
-
-			if (thresholdTuner != null) {
-				if (labelsProvided)
-					thresholdTuner.getTunedThresholdsSparse(null)
-							.forEach((label, threshold) -> {
-								setThreshold(label, threshold);
-							});
-				else
-					setThresholds(thresholdTuner.getTunedThresholds(null));
-			}
-
-			this.Tarray = new int[this.t];
-			this.scalararray = new double[this.t];
-			Arrays.fill(this.Tarray, 1);
-			Arrays.fill(this.scalararray, 1.0);
-		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
+		for (int i = 0; i < this.t; i++) {
+			this.thresholds[i] = 0.5;
 		}
+
+		if (thresholdTuner != null) {
+			if (labelsProvided)
+				thresholdTuner.getTunedThresholdsSparse(null)
+						.forEach((label, threshold) -> {
+							setThreshold(label, threshold);
+						});
+			else
+				setThresholds(thresholdTuner.getTunedThresholds(null));
+		}
+
+		this.Tarray = new int[this.t];
+		this.scalararray = new double[this.t];
+		Arrays.fill(this.Tarray, 1);
+		Arrays.fill(this.scalararray, 1.0);
 	}
 
 	protected void initializeNumberOfLabels(DataManager data) {
@@ -712,12 +709,16 @@ public class PLT extends AbstractLearner {
 
 		for (int j = this.tree.getNumberOfInternalNodes() - 1; j >= 0; j--) {
 
-			double minThreshold = Double.MAX_VALUE;
-			for (int childNode : this.tree.getChildNodes(j)) {
-				minThreshold = this.thresholds[childNode] < minThreshold ? this.thresholds[childNode] : minThreshold;
-			}
+			ArrayList<Integer> children = this.tree.getChildNodes(j);
+			if (children != null) {
+				double minThreshold = Double.MAX_VALUE;
+				for (int childNode : children) {
+					minThreshold = this.thresholds[childNode] < minThreshold ? this.thresholds[childNode]
+							: minThreshold;
+				}
 
-			this.thresholds[j] = minThreshold;
+				this.thresholds[j] = minThreshold;
+			}
 		}
 
 		// for( int i=0; i < this.thresholds.length; i++ )

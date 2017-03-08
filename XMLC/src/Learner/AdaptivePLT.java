@@ -56,7 +56,8 @@ public class AdaptivePLT extends PLT {
 	}
 
 	@Override
-	public void allocateClassifiers(DataManager data) {
+	public void allocateClassifiers(DataManager data) //throws Exception 
+	{
 		super.allocateClassifiers(data);
 		if ((IAdaptiveHasher) fh == null) {
 			logger.error("Feature hasher must be of type IAdaptiveHasher");
@@ -66,8 +67,8 @@ public class AdaptivePLT extends PLT {
 
 	@Override
 	protected void initializeNumberOfLabels(DataManager data) {
-		/*Start from scratch with only one label (0).*/
-		this.m = 1;
+		/*Start from scratch with no label.*/
+		this.m = 0;
 	}
 
 	@Override
@@ -230,31 +231,33 @@ public class AdaptivePLT extends PLT {
 	}
 
 	private void adjustPropetiesWithGrowth(int growth) {
-		// adjust bias
-		List<Double> biasList = Arrays.stream(bias)
-				.boxed()
-				.collect(Collectors.toList());
-		List<Double> thresholdList = Arrays.stream(thresholds)
-				.boxed()
-				.collect(Collectors.toList());
-		List<Integer> TarrayList = Arrays.stream(Tarray)
-				.boxed()
-				.collect(Collectors.toList());
-		List<Double> scalararrayList = Arrays.stream(scalararray)
-				.boxed()
-				.collect(Collectors.toList());
-		IAdaptiveHasher adaptiveFh = (IAdaptiveHasher) fh;
-		for (int i = 0; i < growth; i++) {
-			biasList.add(0.0);
-			thresholdList.add(0.5);
-			TarrayList.add(1);
-			scalararrayList.add(1.0);
-			adaptiveFh.adaptForNewTask();
+		if (growth > 0) {
+			// adjust bias
+			List<Double> biasList = Arrays.stream(bias)
+					.boxed()
+					.collect(Collectors.toList());
+			List<Double> thresholdList = Arrays.stream(thresholds)
+					.boxed()
+					.collect(Collectors.toList());
+			List<Integer> TarrayList = Arrays.stream(Tarray)
+					.boxed()
+					.collect(Collectors.toList());
+			List<Double> scalararrayList = Arrays.stream(scalararray)
+					.boxed()
+					.collect(Collectors.toList());
+			IAdaptiveHasher adaptiveFh = (IAdaptiveHasher) fh;
+			for (int i = 0; i < growth; i++) {
+				biasList.add(0.0);
+				thresholdList.add(0.5);
+				TarrayList.add(1);
+				scalararrayList.add(1.0);
+				adaptiveFh.adaptForNewTask();
+			}
+			// biases.addAll(Collections.nCopies(growth, 0.0));
+			bias = Doubles.toArray(biasList);
+			thresholds = Doubles.toArray(thresholdList);
+			scalararray = Doubles.toArray(scalararrayList);
+			Tarray = Ints.toArray(TarrayList);
 		}
-		// biases.addAll(Collections.nCopies(growth, 0.0));
-		bias = Doubles.toArray(biasList);
-		thresholds = Doubles.toArray(thresholdList);
-		scalararray = Doubles.toArray(scalararrayList);
-		Tarray = Ints.toArray(TarrayList);
 	}
 }

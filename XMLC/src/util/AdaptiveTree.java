@@ -14,6 +14,7 @@ public class AdaptiveTree extends Tree {
 	TreeNode root;
 	Map<Integer, TreeNode> indexToNode = new HashMap<Integer, TreeNode>();
 	Map<Integer, Integer> labelToIndex = new HashMap<Integer, Integer>();
+	private boolean isDummyFirstLabel;
 
 	public AdaptiveTree() {
 	}
@@ -35,10 +36,11 @@ public class AdaptiveTree extends Tree {
 					+ ")");
 
 		// Get the basic details
-		this.m = tree.m;
-		this.k = tree.k;
-		this.size = tree.size;
-		this.numberOfInternalNodes = tree.numberOfInternalNodes;
+		m = tree.m;
+		k = tree.k;
+		isDummyFirstLabel = m == 0 || (labels.size() == 1 && labels.first() == -1);
+		size = isDummyFirstLabel ? 1 : tree.size;
+		numberOfInternalNodes = isDummyFirstLabel ? 1 : tree.numberOfInternalNodes;
 
 		switch (treeType) {
 		case CompleteTree.name:
@@ -122,41 +124,52 @@ public class AdaptiveTree extends Tree {
 		return labelToIndex.keySet();
 	}
 
-	public int adaptLeaf(int lableIndex, int newLabel) {
-		TreeNode leaf = indexToNode.get(labelToIndex.get(lableIndex));
-		TreeNode parent = leaf.getParent();
+	public int adaptLeaf(int label, int newLabel) {
+		Integer labelTreeIndex = labelToIndex.get(label);
+		TreeNode leaf = indexToNode.get(labelTreeIndex);
 
-		int maxTreeIndex = indexToNode.keySet()
-				.stream()
-				.max(Integer::compare)
-				.get();
-
-		maxTreeIndex++;
-		TreeNode newLeaf = new TreeNode(maxTreeIndex, null, newLabel);
-		indexToNode.put(maxTreeIndex, newLeaf);
-		labelToIndex.put(newLabel, maxTreeIndex);
-
-		size++;
-		m++;
-
-		if (parent != null && parent.children.size() < k) {
-			newLeaf.setParent(parent);
+		if (isDummyFirstLabel && label == -1 && labelToIndex.size() == 1 && indexToNode.size() == 1) {
+			leaf.label = newLabel;
+			labelToIndex.remove(label);
+			labelToIndex.put(newLabel, labelTreeIndex);
+			isDummyFirstLabel = false;
+			return labelTreeIndex;
 		} else {
-			maxTreeIndex++;
-			TreeNode newParent = new TreeNode(maxTreeIndex, parent);
-			indexToNode.put(maxTreeIndex, newParent);
+			TreeNode parent = leaf.getParent();
 
-			leaf.setParent(newParent);
-			newLeaf.setParent(newParent);
+			int maxTreeIndex = indexToNode.keySet()
+					.stream()
+					.max(Integer::compare)
+					.get();
+
+			maxTreeIndex++;
+			TreeNode newLeaf = new TreeNode(maxTreeIndex, null, newLabel);
+			indexToNode.put(maxTreeIndex, newLeaf);
+			labelToIndex.put(newLabel, maxTreeIndex);
 
 			size++;
-			numberOfInternalNodes++;
+			m++;
 
-			/*a special case, when the tree starts with only one node (being both root and leaf at the same time)*/
-			if (newParent.getDepth() == 1)
-				root = newParent;
+			if (parent != null && parent.children.size() < k) {
+				newLeaf.setParent(parent);
+			} else {
+				maxTreeIndex++;
+				TreeNode newParent = new TreeNode(maxTreeIndex, parent);
+				indexToNode.put(maxTreeIndex, newParent);
+
+				leaf.setParent(newParent);
+				newLeaf.setParent(newParent);
+
+				size++;
+				numberOfInternalNodes++;
+
+				/*a special case, when the tree starts with only one node (being both root and leaf at the same time)*/
+				if (newParent.getDepth() == 1)
+					root = newParent;
+			}
+			return newLeaf.index;
 		}
-		return newLeaf.index;
+
 	}
 
 	private void populateFromCompleteTree(CompleteTree tree, SortedSet<Integer> labels) throws Exception {
@@ -201,8 +214,12 @@ public class AdaptiveTree extends Tree {
 				else if (tree.isLeaf(treeIndex)) {
 					if (labelsProvided)
 						manageNodeLabel(parent, treeIndex, labelArr[labelToIndex.size()]);
-					else
-						manageNodeLabel(parent, treeIndex, tree);
+					else {
+						if (isDummyFirstLabel)
+							manageNodeLabel(parent, treeIndex, -1);
+						else
+							manageNodeLabel(parent, treeIndex, tree);
+					}
 				}
 			}
 
@@ -253,4 +270,9 @@ public class AdaptiveTree extends Tree {
 	public boolean hasLabel(int label) {
 		return getAllLabels().contains(label);
 	}
+
+	// @Override
+	// public int getSize() {
+	// return isDummyFirstLabel ? 0 : super.getSize();
+	// }
 }

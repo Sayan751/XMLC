@@ -111,7 +111,7 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 	}
 
 	@Override
-	public Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData) throws Exception {
+	public Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData) {
 
 		if (tuningData == null)
 			throw new IllegalArgumentException("Incorrect tuning data");

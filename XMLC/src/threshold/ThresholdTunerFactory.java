@@ -11,17 +11,6 @@ import util.Constants.LearnerInitProperties;
 public abstract class ThresholdTunerFactory {
 	private static Logger logger = LoggerFactory.getLogger(ThresholdTunerFactory.class);
 
-	public static ThresholdTuner createThresholdTuner(int numberOfLabels, Properties properties) {
-
-		ThresholdTuners type = properties.containsKey(LearnerInitProperties.tunerType)
-				? ThresholdTuners.valueOf(properties.getProperty(LearnerInitProperties.tunerType))
-				: ThresholdTuners.None;
-
-		ThresholdTunerInitOption initOption = (ThresholdTunerInitOption) properties
-				.get(LearnerInitProperties.tunerInitOption);
-		return createThresholdTuner(numberOfLabels, type, initOption);
-	}
-
 	public static ThresholdTuner createThresholdTuner(int numberOfLabels, ThresholdTuners type,
 			ThresholdTunerInitOption initOption) {
 		ThresholdTuner retVal = null;

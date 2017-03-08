@@ -86,7 +86,7 @@ public abstract class AbstractLearner implements Serializable {
 	protected boolean shuffleLabels;
 
 	// abstract functions
-	public abstract void allocateClassifiers(DataManager data);
+	public abstract void allocateClassifiers(DataManager data) throws Exception;
 
 	public abstract void train(DataManager data) throws Exception;
 
@@ -189,7 +189,7 @@ public abstract class AbstractLearner implements Serializable {
 	}
 
 	public AbstractLearner(LearnerInitConfiguration configuration) {
-
+		this();
 		isToComputeFmeasureOnTopK = configuration.isToComputeFmeasureOnTopK();
 		defaultK = configuration.getDefaultK();
 		shuffleLabels = configuration.isToShuffleLabels();

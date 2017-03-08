@@ -54,8 +54,7 @@ public abstract class ThresholdTuner {
 	 *         value for threshold.
 	 * @throws Exception
 	 */
-	public abstract Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData)
-			throws Exception;
+	public abstract Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData);
 
 	public abstract double getMacroFmeasure();
 

@@ -57,6 +57,10 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 		logger.info("#### OFO Fast");
 		logger.info("#### numberOfLabels: " + this.numberOfLabels);
 
+		boolean isDummyFirstLabel = this.numberOfLabels == 1 && labelStream.findFirst()
+				.get()
+				.intValue() == -1;
+
 		aSeed = thresholdTunerInitOption != null && thresholdTunerInitOption.aSeed != null
 				? thresholdTunerInitOption.aSeed : OFODefaultValues.aSeed;
 
@@ -73,13 +77,15 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 				&& aInit != null && aInit.length > 0 && aInit.length == this.numberOfLabels
 				&& bInit != null && bInit.length > 0 && bInit.length == this.numberOfLabels) {
 
-			labelStream.forEach(label -> accomodateNewLabel(label, aInit[label], bInit[label]));
+			if (!isDummyFirstLabel)
+				labelStream.forEach(label -> accomodateNewLabel(label, aInit[label], bInit[label]));
 
 			logger.info("#### a[] and b[] are initialized with predefined values");
 
 		} else {
 
-			labelStream.forEach(label -> accomodateNewLabel(label));
+			if (!isDummyFirstLabel)
+				labelStream.forEach(label -> accomodateNewLabel(label));
 
 			logger.info("#### a[] seed: " + aSeed);
 			logger.info("#### b[] seed: " + bSeed);
@@ -132,7 +138,7 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 	}
 
 	@Override
-	public Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData) throws Exception {
+	public Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData) {
 		Set<Integer> thresholdsToChange = null;
 		if (tuningData != null) {
 
