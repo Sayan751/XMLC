@@ -41,7 +41,7 @@ import util.Constants.LearnerInitProperties;
 import util.Constants.PLTEnsembleDefaultValues;
 import util.PLTPropertiesForCache;
 
-public class PLTEnsemble2 extends AbstractLearner {
+public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private static final long serialVersionUID = 7193120904682573610L;
 
 	public enum PenalizingStrategies {
@@ -52,7 +52,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 		NumberTrainingInstancesBased, NumberOfLabelsBased
 	}
 
-	private static Logger logger = LoggerFactory.getLogger(PLTEnsemble2.class);
+	private static Logger logger = LoggerFactory.getLogger(PLTAdaptiveEnsemble.class);
 
 	transient private ILearnerRepository learnerRepository;
 	private List<PLTPropertiesForCache> pltCache;
@@ -89,7 +89,7 @@ public class PLTEnsemble2 extends AbstractLearner {
 	private int c;
 	private int a;
 
-	public PLTEnsemble2(Properties properties) throws Exception {
+	public PLTAdaptiveEnsemble(Properties properties) throws Exception {
 		super(properties);
 
 		learnerRepository = (ILearnerRepository) properties.get(LearnerInitProperties.learnerRepository);
