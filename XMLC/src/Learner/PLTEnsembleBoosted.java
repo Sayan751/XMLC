@@ -34,7 +34,6 @@ import threshold.IAdaptiveTuner;
 import threshold.ThresholdTunerFactory;
 import threshold.ThresholdTuners;
 import util.AdaptivePLTInitConfiguration;
-import util.LearnerInitConfiguration;
 import util.PLTEnsembleBoostedInitConfiguration;
 import util.PLTPropertiesForCache;
 
@@ -60,40 +59,35 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	public PLTEnsembleBoosted() {
 	}
 
-	public PLTEnsembleBoosted(LearnerInitConfiguration configuration) {
+	public PLTEnsembleBoosted(PLTEnsembleBoostedInitConfiguration configuration) {
 		super(configuration);
 
-		PLTEnsembleBoostedInitConfiguration ensembleConfiguration = configuration instanceof PLTEnsembleBoostedInitConfiguration
-				? (PLTEnsembleBoostedInitConfiguration) configuration : null;
-		if (ensembleConfiguration == null)
-			throw new IllegalArgumentException("Invalid init configuration.");
-
-		if (ensembleConfiguration.tunerInitOption == null || ensembleConfiguration.tunerInitOption.aSeed == null
-				|| ensembleConfiguration.tunerInitOption.bSeed == null)
+		if (configuration.tunerInitOption == null || configuration.tunerInitOption.aSeed == null
+				|| configuration.tunerInitOption.bSeed == null)
 			throw new IllegalArgumentException(
 					"Invalid init configuration: invalid tuning option; aSeed and bSeed must be provided.");
 
-		learnerRepository = ensembleConfiguration.learnerRepository;
+		learnerRepository = configuration.learnerRepository;
 		if (learnerRepository == null)
 			throw new IllegalArgumentException(
 					"Invalid init configuration: required learnerRepository object is not provided.");
 
 		random = new Random();
 
-		isToAggregateByMajorityVote = ensembleConfiguration.isToAggregateByMajorityVote();
-		preferMacroFmeasure = ensembleConfiguration.isPreferMacroFmeasure();
-		fZero = ensembleConfiguration.getfZero();
-		minEpochs = ensembleConfiguration.getMinEpochs();
-		maxBranchingFactor = ensembleConfiguration.getMaxBranchingFactor();
+		isToAggregateByMajorityVote = configuration.isToAggregateByMajorityVote();
+		preferMacroFmeasure = configuration.isPreferMacroFmeasure();
+		fZero = configuration.getfZero();
+		minEpochs = configuration.getMinEpochs();
+		maxBranchingFactor = configuration.getMaxBranchingFactor();
 
-		AdaptivePLTInitConfiguration pltConfiguration = ensembleConfiguration.individualPLTConfiguration;
+		AdaptivePLTInitConfiguration pltConfiguration = configuration.individualPLTConfiguration;
 		pltConfiguration.setToComputeFmeasureOnTopK(isToComputeFmeasureOnTopK);
 		pltConfiguration.setDefaultK(defaultK);
 		if (fmeasureObserverAvailable)
 			pltConfiguration.fmeasureObserver = fmeasureObserver;
 		pltConfiguration.setshuffleLabels(shuffleLabels);
 
-		int ensembleSize = ensembleConfiguration.getEnsembleSize();
+		int ensembleSize = configuration.getEnsembleSize();
 		pltCache = new ArrayList<PLTPropertiesForCache>();
 		IntStream.range(0, ensembleSize)
 				.forEach(i -> {
@@ -107,7 +101,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		logger.info("Ensemble size:" + pltCache.size());
 
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
-				ensembleConfiguration.tunerInitOption);
+				configuration.tunerInitOption);
 
 		labelsSeen = new HashSet<Integer>(Arrays.asList(0));
 	}

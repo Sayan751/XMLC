@@ -36,7 +36,6 @@ import interfaces.ILearnerRepository;
 import threshold.IAdaptiveTuner;
 import threshold.ThresholdTunerFactory;
 import threshold.ThresholdTuners;
-import util.LearnerInitConfiguration;
 import util.PLTAdaptiveEnsembleAgeFunctions;
 import util.PLTAdaptiveEnsembleInitConfiguration;
 import util.PLTAdaptiveEnsemblePenalizingStrategies;
@@ -85,20 +84,15 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	private PLTInitConfiguration pltConfiguration;
 
-	public PLTAdaptiveEnsemble(LearnerInitConfiguration configuration) {
+	public PLTAdaptiveEnsemble(PLTAdaptiveEnsembleInitConfiguration configuration) {
 		super(configuration);
 
-		PLTAdaptiveEnsembleInitConfiguration ensembleConfiguration = configuration instanceof PLTAdaptiveEnsembleInitConfiguration
-				? (PLTAdaptiveEnsembleInitConfiguration) configuration : null;
-		if (ensembleConfiguration == null)
-			throw new IllegalArgumentException("Invalid init configuration.");
-
-		if (ensembleConfiguration.tunerInitOption == null || ensembleConfiguration.tunerInitOption.aSeed == null
-				|| ensembleConfiguration.tunerInitOption.bSeed == null)
+		if (configuration.tunerInitOption == null || configuration.tunerInitOption.aSeed == null
+				|| configuration.tunerInitOption.bSeed == null)
 			throw new IllegalArgumentException(
 					"Invalid init configuration: invalid tuning option; aSeed and bSeed must be provided.");
 
-		learnerRepository = ensembleConfiguration.learnerRepository;
+		learnerRepository = configuration.learnerRepository;
 		if (learnerRepository == null)
 			throw new IllegalArgumentException(
 					"Invalid init configuration: required learnerRepository object is not provided.");
@@ -108,22 +102,22 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		pltDiscardedListeners = new HashSet<IPLTDiscardedListener>();
 		labelsSeen = new TreeSet<Integer>();
 
-		epsilon = ensembleConfiguration.getEpsilon();
-		retainmentFraction = ensembleConfiguration.getRetainmentFraction();
-		minTraingInstances = ensembleConfiguration.getMinTraingInstances();
-		alpha = ensembleConfiguration.getAlpha();
-		preferMacroFmeasure = ensembleConfiguration.isPreferMacroFmeasure();
+		epsilon = configuration.getEpsilon();
+		retainmentFraction = configuration.getRetainmentFraction();
+		minTraingInstances = configuration.getMinTraingInstances();
+		alpha = configuration.getAlpha();
+		preferMacroFmeasure = configuration.isPreferMacroFmeasure();
 
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
-				ensembleConfiguration.tunerInitOption);
+				configuration.tunerInitOption);
 
-		penalizingStrategy = ensembleConfiguration.getPenalizingStrategy();
-		ageFunction = ensembleConfiguration.getAgeFunction();
+		penalizingStrategy = configuration.getPenalizingStrategy();
+		ageFunction = configuration.getAgeFunction();
 
-		c = ensembleConfiguration.getC();
-		a = ensembleConfiguration.getA();
+		c = configuration.getC();
+		a = configuration.getA();
 
-		pltConfiguration = ensembleConfiguration.individualPLTProperties;
+		pltConfiguration = configuration.individualPLTProperties;
 		pltConfiguration.setToComputeFmeasureOnTopK(isToComputeFmeasureOnTopK);
 		pltConfiguration.setDefaultK(defaultK);
 		if (fmeasureObserverAvailable)

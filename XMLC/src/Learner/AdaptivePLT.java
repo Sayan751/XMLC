@@ -25,34 +25,35 @@ import preprocessing.IAdaptiveHasher;
 import threshold.IAdaptiveTuner;
 import util.AdaptivePLTInitConfiguration;
 import util.AdaptiveTree;
-import util.LearnerInitConfiguration;
 import util.Tree;
 
 public class AdaptivePLT extends PLT {
 	private static final long serialVersionUID = 7227495342317859325L;
 	private static Logger logger = LoggerFactory.getLogger(PLT.class);
 
+	/**
+	 * Whether to prefer the node with the highest posterior or the lowest
+	 * posterior while adapting the PLT.
+	 */
 	private boolean isToPreferHighestProbLeaf;
 	/**
 	 * Weight to put on probability of leaf, while choosing a leaf to adapt.
 	 */
 	private double alpha;
+	/**
+	 * Whether to prefer the shallowest node or the deepest node in the PLT.
+	 */
 	private boolean isToPreferShallowLeaf;
 
 	public AdaptivePLT() {
 	}
 
-	public AdaptivePLT(LearnerInitConfiguration configuration) {
+	public AdaptivePLT(AdaptivePLTInitConfiguration configuration) {
 		super(configuration);
 
-		AdaptivePLTInitConfiguration pltConfiguration = configuration instanceof AdaptivePLTInitConfiguration
-				? (AdaptivePLTInitConfiguration) configuration : null;
-		if (pltConfiguration == null)
-			throw new IllegalArgumentException("Invalid init configuration.");
-
-		isToPreferHighestProbLeaf = pltConfiguration.isToPreferHighestProbLeaf();
-		alpha = pltConfiguration.getAlpha();
-		isToPreferShallowLeaf = pltConfiguration.isToPreferShallowLeaf();
+		isToPreferHighestProbLeaf = configuration.isToPreferHighestProbLeaf();
+		alpha = configuration.getAlpha();
+		isToPreferShallowLeaf = configuration.isToPreferShallowLeaf();
 	}
 
 	@Override

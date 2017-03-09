@@ -27,12 +27,11 @@ import threshold.ThresholdTunerInitOption;
 import threshold.ThresholdTuners;
 import util.AdaptiveTree;
 import util.CompleteTree;
+import util.Constants.LearnerInitProperties;
 import util.HuffmanTree;
-import util.LearnerInitConfiguration;
 import util.PLTInitConfiguration;
 import util.PrecomputedTree;
 import util.Tree;
-import util.Constants.LearnerInitProperties;
 
 public class PLT extends AbstractLearner {
 	private static final long serialVersionUID = 1L;
@@ -129,39 +128,34 @@ public class PLT extends AbstractLearner {
 
 	}
 
-	public PLT(LearnerInitConfiguration configuration) {
+	public PLT(PLTInitConfiguration configuration) {
 		super(configuration);
 
-		PLTInitConfiguration pltConfiguration = configuration instanceof PLTInitConfiguration
-				? (PLTInitConfiguration) configuration : null;
-		if (pltConfiguration == null)
-			throw new IllegalArgumentException("Invalid init configuration.");
-
 		// learning rate
-		this.gamma = pltConfiguration.getGamma();
+		this.gamma = configuration.getGamma();
 
 		// scalar
-		this.lambda = pltConfiguration.getLambda();
+		this.lambda = configuration.getLambda();
 
 		// epochs
-		this.epochs = pltConfiguration.getEpochs();
+		this.epochs = configuration.getEpochs();
 
 		// epochs
-		this.hasher = pltConfiguration.getHasher();
+		this.hasher = configuration.getHasher();
 
-		this.hd = pltConfiguration.getHd();
+		this.hd = configuration.getHd();
 
 		// k-ary tree
-		this.k = pltConfiguration.getK();
+		this.k = configuration.getK();
 
 		// tree type (Complete, Precomputed, Huffman)
-		this.treeType = pltConfiguration.getTreeType();
+		this.treeType = configuration.getTreeType();
 
 		// tree file name
-		this.treeFile = pltConfiguration.treeFile;
+		this.treeFile = configuration.treeFile;
 
-		tunerType = pltConfiguration.tunerType;
-		tunerInitOption = pltConfiguration.tunerInitOption;
+		tunerType = configuration.tunerType;
+		tunerInitOption = configuration.tunerInitOption;
 	}
 
 	public void printParameters() {
