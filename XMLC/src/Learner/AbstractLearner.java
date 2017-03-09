@@ -86,9 +86,9 @@ public abstract class AbstractLearner implements Serializable {
 	protected boolean shuffleLabels;
 
 	// abstract functions
-	public abstract void allocateClassifiers(DataManager data) throws Exception;
+	public abstract void allocateClassifiers(DataManager data);
 
-	public abstract void train(DataManager data) throws Exception;
+	public abstract void train(DataManager data);
 
 	// public abstract Evaluator test( AVTable data );
 	public abstract double getPosteriors(AVPair[] x, int label);
@@ -314,28 +314,18 @@ public abstract class AbstractLearner implements Serializable {
 	 * 
 	 */
 	protected void tuneThreshold(DataManager data) {
-		try {
-			Map<Integer, Double> sparseThresholds = thresholdTuner
-					.getTunedThresholdsSparse(createTuningData(data));
-			for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
-				setThreshold(entry.getKey(), entry.getValue());
-			}
-		} catch (Exception e) {
-			logger.error("Error during tuning the threshlds.", e);
-			System.exit(-1);
+		Map<Integer, Double> sparseThresholds = thresholdTuner
+				.getTunedThresholdsSparse(createTuningData(data));
+		for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
+			setThreshold(entry.getKey(), entry.getValue());
 		}
 	}
 
 	protected void tuneThreshold(Instance instance) {
-		try {
-			Map<Integer, Double> sparseThresholds = thresholdTuner
-					.getTunedThresholdsSparse(createTuningData(instance));
-			for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
-				setThreshold(entry.getKey(), entry.getValue());
-			}
-		} catch (Exception e) {
-			logger.error("Error during tuning the threshlds.", e);
-			System.exit(-1);
+		Map<Integer, Double> sparseThresholds = thresholdTuner
+				.getTunedThresholdsSparse(createTuningData(instance));
+		for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
+			setThreshold(entry.getKey(), entry.getValue());
 		}
 	}
 

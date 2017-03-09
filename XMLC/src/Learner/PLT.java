@@ -129,13 +129,13 @@ public class PLT extends AbstractLearner {
 
 	}
 
-	public PLT(LearnerInitConfiguration configuration) throws Exception {
+	public PLT(LearnerInitConfiguration configuration) {
 		super(configuration);
 
 		PLTInitConfiguration pltConfiguration = configuration instanceof PLTInitConfiguration
 				? (PLTInitConfiguration) configuration : null;
 		if (pltConfiguration == null)
-			throw new Exception("Invalid init configuration");
+			throw new IllegalArgumentException("Invalid init configuration.");
 
 		// learning rate
 		this.gamma = pltConfiguration.getGamma();
@@ -243,23 +243,19 @@ public class PLT extends AbstractLearner {
 	}
 
 	protected Tree createTree(DataManager data, SortedSet<Integer> labels) {
-		try {
-			switch (this.treeType) {
-			case CompleteTree.name:
-				return labels == null || labels.isEmpty() ? new CompleteTree(this.k, this.m)
-						: new AdaptiveTree(new CompleteTree(this.k, labels.size()), CompleteTree.name, labels);
-			case PrecomputedTree.name:
-				return new PrecomputedTree(this.treeFile);
-			case HuffmanTree.name:
-				return new HuffmanTree(data, this.treeFile);
-			default:
-				System.err.println("Unknown tree type!");
-				System.exit(-1);
-			}
-		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
+		switch (this.treeType) {
+		case CompleteTree.name:
+			return labels == null || labels.isEmpty() ? new CompleteTree(this.k, this.m)
+					: new AdaptiveTree(new CompleteTree(this.k, labels.size()), CompleteTree.name, labels);
+		case PrecomputedTree.name:
+			return new PrecomputedTree(this.treeFile);
+		case HuffmanTree.name:
+			return new HuffmanTree(data, this.treeFile);
+		default:
+			System.err.println("Unknown tree type!");
 			System.exit(-1);
 		}
+
 		return null;
 	}
 

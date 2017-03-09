@@ -42,13 +42,13 @@ public class AdaptivePLT extends PLT {
 	public AdaptivePLT() {
 	}
 
-	public AdaptivePLT(LearnerInitConfiguration configuration) throws Exception {
+	public AdaptivePLT(LearnerInitConfiguration configuration) {
 		super(configuration);
 
 		AdaptivePLTInitConfiguration pltConfiguration = configuration instanceof AdaptivePLTInitConfiguration
 				? (AdaptivePLTInitConfiguration) configuration : null;
 		if (pltConfiguration == null)
-			throw new Exception("Invalid init configuration");
+			throw new IllegalArgumentException("Invalid init configuration.");
 
 		isToPreferHighestProbLeaf = pltConfiguration.isToPreferHighestProbLeaf();
 		alpha = pltConfiguration.getAlpha();
@@ -56,13 +56,11 @@ public class AdaptivePLT extends PLT {
 	}
 
 	@Override
-	public void allocateClassifiers(DataManager data) //throws Exception 
-	{
+	public void allocateClassifiers(DataManager data) {
 		super.allocateClassifiers(data);
-		if ((IAdaptiveHasher) fh == null) {
-			logger.error("Feature hasher must be of type IAdaptiveHasher");
-			System.exit(-1);
-		}
+		if ((IAdaptiveHasher) fh == null)
+			throw new IllegalArgumentException(
+					"Invalid init configuration: feature hasher must be of type IAdaptiveHasher.");
 	}
 
 	@Override
@@ -73,25 +71,13 @@ public class AdaptivePLT extends PLT {
 
 	@Override
 	protected Tree createTree(DataManager data) {
-		try {
-			return new AdaptiveTree(super.createTree(data), treeType, shuffleLabels);
-		} catch (Exception e) {
-			logger.error("Error in creating tree", e);
-			System.exit(-1);
-		}
-		return null;
+		return new AdaptiveTree(super.createTree(data), treeType, shuffleLabels);
 	}
 
 	@Override
 	protected Tree createTree(DataManager data, SortedSet<Integer> labels) {
-		try {
-			Tree tr = super.createTree(data, labels);
-			return tr instanceof AdaptiveTree ? tr : new AdaptiveTree(tr, treeType, shuffleLabels);
-		} catch (Exception e) {
-			logger.error("Error in creating tree", e);
-			System.exit(-1);
-		}
-		return null;
+		Tree tr = super.createTree(data, labels);
+		return tr instanceof AdaptiveTree ? tr : new AdaptiveTree(tr, treeType, shuffleLabels);
 	}
 
 	@Override
@@ -221,13 +207,11 @@ public class AdaptivePLT extends PLT {
 
 	private void adjustTuner(int label) {
 		// adjust tuner
-		IAdaptiveTuner tuner = (IAdaptiveTuner) this.thresholdTuner;
-		if (tuner != null) {
+		IAdaptiveTuner tuner = thresholdTuner instanceof IAdaptiveTuner ? (IAdaptiveTuner) thresholdTuner : null;
+		if (tuner != null)
 			tuner.accomodateNewLabel(label);
-		} else {
-			logger.error("Threshold tuner is not of type IAdaptiveTuner");
-			System.exit(-1);
-		}
+		else
+			throw new IllegalArgumentException("Threshold tuner is not of type IAdaptiveTuner");
 	}
 
 	private void adjustPropetiesWithGrowth(int growth) {

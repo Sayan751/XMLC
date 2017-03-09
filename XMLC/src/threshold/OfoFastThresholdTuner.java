@@ -35,8 +35,8 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 		logger.info("#### OFO Fast");
 		logger.info("#### numberOfLabels: " + numberOfLabels);
 
-		if (thresholdTunerInitOption != null && thresholdTunerInitOption.aInit != null
-				&& thresholdTunerInitOption.aInit.length > 0
+		if (thresholdTunerInitOption != null
+				&& thresholdTunerInitOption.aInit != null && thresholdTunerInitOption.aInit.length > 0
 				&& thresholdTunerInitOption.bInit != null && thresholdTunerInitOption.bInit.length > 0) {
 
 			setaThresholdNumerators(thresholdTunerInitOption.aInit);
@@ -65,16 +65,16 @@ public class OfoFastThresholdTuner extends ThresholdTuner {
 	}
 
 	private void setaThresholdNumerators(int[] aInit) {
-		if (aInit.length != numberOfLabels) {
-			System.exit(-1);
-		}
+		if (aInit.length != numberOfLabels)
+			throw new IllegalArgumentException(
+					"Length of aInit does not match with the number of labels");
 		aThresholdNumerators = aInit;
 	}
 
 	private void setbThresholdDenominatorst(int[] bInit) {
-		if (bInit.length != numberOfLabels) {
-			System.exit(-1);
-		}
+		if (bInit.length != numberOfLabels)
+			throw new IllegalArgumentException(
+					"Length of bInit does not match with the number of labels");
 		bThresholdDenominators = bInit;
 	}
 

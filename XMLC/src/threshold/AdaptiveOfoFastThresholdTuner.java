@@ -219,7 +219,7 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 	}
 
 	@Override
-	public double getTempMacroFmeasure(Map<String, Object> tuningData) throws Exception {
+	public double getTempMacroFmeasure(Map<String, Object> tuningData) {
 
 		@SuppressWarnings("unchecked")
 		List<HashSet<Integer>> predictedLabels = (List<HashSet<Integer>>) tuningData

@@ -85,22 +85,23 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	private PLTInitConfiguration pltConfiguration;
 
-	public PLTAdaptiveEnsemble(LearnerInitConfiguration configuration) throws Exception {
+	public PLTAdaptiveEnsemble(LearnerInitConfiguration configuration) {
 		super(configuration);
 
 		PLTAdaptiveEnsembleInitConfiguration ensembleConfiguration = configuration instanceof PLTAdaptiveEnsembleInitConfiguration
 				? (PLTAdaptiveEnsembleInitConfiguration) configuration : null;
 		if (ensembleConfiguration == null)
-			throw new Exception("Invalid init configuration");
+			throw new IllegalArgumentException("Invalid init configuration.");
 
 		if (ensembleConfiguration.tunerInitOption == null || ensembleConfiguration.tunerInitOption.aSeed == null
 				|| ensembleConfiguration.tunerInitOption.bSeed == null)
-			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
+			throw new IllegalArgumentException(
+					"Invalid init configuration: invalid tuning option; aSeed and bSeed must be provided.");
 
 		learnerRepository = ensembleConfiguration.learnerRepository;
 		if (learnerRepository == null)
-			throw new Exception(
-					"Invalid initialization parameters. A required learnerRepository object is not provided.");
+			throw new IllegalArgumentException(
+					"Invalid init configuration: required learnerRepository object is not provided.");
 
 		pltCache = new ArrayList<PLTPropertiesForCache>();
 		pltCreatedListeners = new HashSet<IPLTCreatedListener>();
@@ -133,7 +134,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	public void allocateClassifiers(DataManager data) {
 	}
 
-	private void addNewPLT(DataManager data) throws Exception {
+	private void addNewPLT(DataManager data) {
 		PLT plt = new PLT(pltConfiguration);
 		plt.allocateClassifiers(data, labelsSeen);
 		UUID learnerId = learnerRepository.create(plt, getId());
@@ -142,7 +143,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	}
 
 	@Override
-	public void train(final DataManager data) throws Exception {
+	public void train(final DataManager data) {
 
 		double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure() : getAverageFmeasure(false);
 		double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getNumberOfTrainingInstancesSeen();
@@ -228,10 +229,9 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	 * @param fmeasureOld
 	 * @param fmeasureNew
 	 * @param data
-	 * @throws Exception
 	 */
 	private void discardLearners(final double sumFmOld, final double fmeasureOld, double fmeasureNew,
-			DataManager data) throws Exception {
+			DataManager data) {
 
 		List<PLTPropertiesForCache> scoredLearnerIds = getPenalizedLearners().entrySet()
 				.stream()
@@ -262,21 +262,17 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				.collect(Collectors.toMap(c -> c, c -> {
 
 					double retVal = Double.MAX_VALUE;
-					try {
-						switch (penalizingStrategy) {
-						case MacroFmMinusRatioOfInstances:
-							retVal = penalizeByMacroFmMinusRatioOfInstances(c);
-							break;
-						case AgePlusLogOfInverseMacroFm:
-							retVal = penalizeByAgePlusLogOfInverseMacroFm(c);
-							break;
-						default:
-							throw new Exception("Unknown penalizing strategy: " + penalizingStrategy);
-						}
-					} catch (Exception e) {
-						logger.error(e.getMessage(), e);
-						System.exit(-1);
+					switch (penalizingStrategy) {
+					case MacroFmMinusRatioOfInstances:
+						retVal = penalizeByMacroFmMinusRatioOfInstances(c);
+						break;
+					case AgePlusLogOfInverseMacroFm:
+						retVal = penalizeByAgePlusLogOfInverseMacroFm(c);
+						break;
+					default:
+						throw new IllegalArgumentException("Unknown penalizing strategy: " + penalizingStrategy);
 					}
+
 					return retVal;
 				}));
 	}
@@ -292,12 +288,12 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen()));
 	}
 
-	private double penalizeByAgePlusLogOfInverseMacroFm(PLTPropertiesForCache cachedPltDetails) throws Exception {
+	private double penalizeByAgePlusLogOfInverseMacroFm(PLTPropertiesForCache cachedPltDetails) {
 		return alpha * pow(c * getAgeOfPlt(cachedPltDetails), a)
 				+ (1 - alpha) * pow(log(1 / cachedPltDetails.macroFmeasure), a);
 	}
 
-	private double getAgeOfPlt(PLTPropertiesForCache cachedPltDetails) throws Exception {
+	private double getAgeOfPlt(PLTPropertiesForCache cachedPltDetails) {
 		double retVal = 0;
 		switch (ageFunction) {
 
@@ -310,7 +306,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			break;
 
 		default:
-			throw new Exception("Unknown age function: " + ageFunction);
+			throw new IllegalArgumentException("Unknown age function: " + ageFunction);
 		}
 
 		return retVal;
@@ -325,7 +321,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		return sumFmOld / getNumberOfTrainingInstancesSeen();
 	}
 
-	private double getTempMacroFMeasureOnData(DataManager data) throws Exception {
+	private double getTempMacroFMeasureOnData(DataManager data) {
 		return thresholdTuner.getTempMacroFmeasure(createTuningData(data));
 	}
 
@@ -452,11 +448,6 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	@Override
 	protected void tuneThreshold(DataManager data) {
-		try {
-			thresholdTuner.getTunedThresholdsSparse(createTuningData(data));
-		} catch (Exception e) {
-			logger.error("Error during tuning the threshlds.", e);
-			System.exit(-1);
-		}
+		thresholdTuner.getTunedThresholdsSparse(createTuningData(data));
 	}
 }

@@ -60,22 +60,23 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	public PLTEnsembleBoosted() {
 	}
 
-	public PLTEnsembleBoosted(LearnerInitConfiguration configuration) throws Exception {
+	public PLTEnsembleBoosted(LearnerInitConfiguration configuration) {
 		super(configuration);
 
 		PLTEnsembleBoostedInitConfiguration ensembleConfiguration = configuration instanceof PLTEnsembleBoostedInitConfiguration
 				? (PLTEnsembleBoostedInitConfiguration) configuration : null;
 		if (ensembleConfiguration == null)
-			throw new Exception("Invalid init configuration");
+			throw new IllegalArgumentException("Invalid init configuration.");
 
 		if (ensembleConfiguration.tunerInitOption == null || ensembleConfiguration.tunerInitOption.aSeed == null
 				|| ensembleConfiguration.tunerInitOption.bSeed == null)
-			throw new Exception("Invalid tuning option; aSeed and bSeed must be provided.");
+			throw new IllegalArgumentException(
+					"Invalid init configuration: invalid tuning option; aSeed and bSeed must be provided.");
 
 		learnerRepository = ensembleConfiguration.learnerRepository;
 		if (learnerRepository == null)
-			throw new Exception(
-					"Invalid initialization parameters. A required learnerRepository object is not provided.");
+			throw new IllegalArgumentException(
+					"Invalid init configuration: required learnerRepository object is not provided.");
 
 		random = new Random();
 
@@ -111,7 +112,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		labelsSeen = new HashSet<Integer>(Arrays.asList(0));
 	}
 
-	private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) throws Exception {
+	private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) {
 
 		// add random branching factor
 		int k = maxBranchingFactor == 2 ? maxBranchingFactor : random.ints(1, 2, maxBranchingFactor)

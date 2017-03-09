@@ -19,19 +19,18 @@ public class AdaptiveTree extends Tree {
 	public AdaptiveTree() {
 	}
 
-	public AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels) throws Exception {
+	public AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels) {
 		this(tree, treeType, shuffleLabels, null);
 	}
 
-	public AdaptiveTree(Tree tree, String treeType, SortedSet<Integer> labels) throws Exception {
+	public AdaptiveTree(Tree tree, String treeType, SortedSet<Integer> labels) {
 		this(tree, treeType, false, labels);
 	}
 
-	private AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels, SortedSet<Integer> labels)
-			throws Exception {
+	private AdaptiveTree(Tree tree, String treeType, boolean shuffleLabels, SortedSet<Integer> labels) {
 
 		if (labels != null && !labels.isEmpty() && labels.size() != tree.m)
-			throw new Exception("Size of labels set (" + labels.size()
+			throw new IllegalArgumentException("Size of labels set (" + labels.size()
 					+ ") provided does not match to the number of leaves present in the tree (" + tree.m
 					+ ")");
 
@@ -47,7 +46,7 @@ public class AdaptiveTree extends Tree {
 			populateFromCompleteTree((CompleteTree) tree, labels);
 			break;
 		default:
-			throw new Exception(String.format("AdaptiveTree for %s is not yet implemented.", treeType));
+			throw new IllegalArgumentException(String.format("AdaptiveTree for %s is not yet implemented.", treeType));
 		}
 
 		if (shuffleLabels)
@@ -172,7 +171,7 @@ public class AdaptiveTree extends Tree {
 
 	}
 
-	private void populateFromCompleteTree(CompleteTree tree, SortedSet<Integer> labels) throws Exception {
+	private void populateFromCompleteTree(CompleteTree tree, SortedSet<Integer> labels) {
 		if (tree != null) {
 			// Start with root (for complete tree it is 0).
 			int treeIndex = 0;
@@ -224,7 +223,7 @@ public class AdaptiveTree extends Tree {
 			}
 
 		} else
-			throw new Exception("Invalid input tree");
+			throw new IllegalArgumentException("Invalid input tree");
 	}
 
 	private void manageNodeLabel(TreeNode node, Integer nodeIndex, CompleteTree tree) {

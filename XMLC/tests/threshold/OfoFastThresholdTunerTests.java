@@ -1,17 +1,14 @@
 package threshold;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -439,7 +436,7 @@ public class OfoFastThresholdTunerTests {
 
 	@SuppressWarnings("serial")
 	@Test
-	public void getTunedThresholdsSparse_ReturnsCorrectLabels() throws Exception {
+	public void getTunedThresholdsSparse_ReturnsCorrectLabels() {
 
 		// arrange
 		final List<HashSet<Integer>> trueLabels = new ArrayList<HashSet<Integer>>() {
@@ -473,7 +470,7 @@ public class OfoFastThresholdTunerTests {
 	}
 
 	@Test
-	public void getTunedThresholdsSparse_ReturnsCorrectLabels_For100RandomInstances() throws Exception {
+	public void getTunedThresholdsSparse_ReturnsCorrectLabels_For100RandomInstances() {
 
 		// arrange
 		int numberOfInstances = 100;

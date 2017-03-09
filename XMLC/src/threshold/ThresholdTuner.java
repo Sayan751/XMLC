@@ -52,13 +52,12 @@ public abstract class ThresholdTuner {
 	 *            {@link Constants.ThresholdTuningDataKeys}.
 	 * @return Sparse tuned thresholds, the key is label, and the value is new
 	 *         value for threshold.
-	 * @throws Exception
 	 */
 	public abstract Map<Integer, Double> getTunedThresholdsSparse(Map<String, Object> tuningData);
 
 	public abstract double getMacroFmeasure();
 
-	public double getTempMacroFmeasure(Map<String, Object> tuningData) throws Exception {
+	public double getTempMacroFmeasure(Map<String, Object> tuningData) {
 		return 0;
 	}
 }
