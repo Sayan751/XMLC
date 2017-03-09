@@ -132,6 +132,8 @@ public class AdaptiveTree extends Tree {
 			labelToIndex.remove(label);
 			labelToIndex.put(newLabel, labelTreeIndex);
 			isDummyFirstLabel = false;
+			m++;
+			numberOfInternalNodes = 0;
 			return labelTreeIndex;
 		} else {
 			TreeNode parent = leaf.getParent();

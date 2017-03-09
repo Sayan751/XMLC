@@ -71,11 +71,6 @@ public class AdaptivePLT extends PLT {
 	}
 
 	@Override
-	protected Tree createTree(DataManager data) {
-		return new AdaptiveTree(super.createTree(data), treeType, shuffleLabels);
-	}
-
-	@Override
 	protected Tree createTree(DataManager data, SortedSet<Integer> labels) {
 		Tree tr = super.createTree(data, labels);
 		return tr instanceof AdaptiveTree ? tr : new AdaptiveTree(tr, treeType, shuffleLabels);

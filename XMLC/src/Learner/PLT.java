@@ -3,6 +3,7 @@ package Learner;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.SortedSet;
@@ -11,6 +12,8 @@ import java.util.TreeSet;
 import org.apache.commons.math3.analysis.function.Sigmoid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.primitives.Ints;
 
 import Data.AVPair;
 //import Data.AVTable;
@@ -568,7 +571,7 @@ public class PLT extends AbstractLearner {
 
 		PriorityQueue<NodePLT> queue = new PriorityQueue<NodePLT>(11, nodeComparator);
 
-		queue.add(new NodePLT(0, 1.0));
+		queue.add(new NodePLT(tree.getRootIndex(), 1.0));
 
 		while (!queue.isEmpty()) {
 
@@ -586,7 +589,10 @@ public class PLT extends AbstractLearner {
 
 				} else {
 
-					positiveLabels.add(this.tree.getLabelIndex(node.treeIndex));
+					int labelIndex = this.tree.getLabelIndex(node.treeIndex);
+					/*Assumption: label index must be greater than or equal to 0.*/
+					if (labelIndex > -1)
+						positiveLabels.add(labelIndex);
 
 				}
 			}
@@ -605,7 +611,7 @@ public class PLT extends AbstractLearner {
 
 		PriorityQueue<NodePLT> queue = new PriorityQueue<NodePLT>(11, nodeComparator);
 
-		queue.add(new NodePLT(0, 1.0));
+		queue.add(new NodePLT(tree.getRootIndex(), 1.0));
 
 		while (!queue.isEmpty()) {
 
@@ -623,7 +629,10 @@ public class PLT extends AbstractLearner {
 
 				} else {
 
-					positiveLabels.add(new ComparablePair(currentP, this.tree.getLabelIndex(node.treeIndex)));
+					int labelIndex = this.tree.getLabelIndex(node.treeIndex);
+					/*Assumption: label index must be greater than or equal to 0.*/
+					if (labelIndex > -1)
+						positiveLabels.add(new ComparablePair(currentP, labelIndex));
 
 				}
 			}
@@ -636,14 +645,14 @@ public class PLT extends AbstractLearner {
 
 	@Override
 	public int[] getTopkLabels(AVPair[] x, int k) {
-		int[] positiveLabels = new int[k];
-		int indi = 0;
+		/*this avoids having k number of 0s in output in case there are no valid predicted positives.*/
+		List<Integer> positiveLabels = new ArrayList<>();
 
 		NodeComparatorPLT nodeComparator = new NodeComparatorPLT();
 
 		PriorityQueue<NodePLT> queue = new PriorityQueue<>(11, nodeComparator);
 
-		queue.add(new NodePLT(0, 1.0));
+		queue.add(new NodePLT(tree.getRootIndex(), 1.0));
 
 		while (!queue.isEmpty()) {
 
@@ -658,17 +667,22 @@ public class PLT extends AbstractLearner {
 				}
 
 			} else {
-				positiveLabels[indi++] = this.tree.getLabelIndex(node.treeIndex);
+				int labelIndex = this.tree.getLabelIndex(node.treeIndex);
+				/*Assumption: label index must be greater than or equal to 0.*/
+				if (labelIndex > -1)
+					positiveLabels.add(labelIndex);
 			}
 
-			if (indi >= k) {
+			if (positiveLabels.size() >= k) {
 				break;
 			}
 		}
 
-		// logger.info("Predicted labels: " + positiveLabels.toString());
+		int[] positiveLabelsArray = Ints.toArray(positiveLabels);
 
-		return positiveLabels;
+		logger.info("Predicted labels: " + Arrays.toString(positiveLabelsArray));
+
+		return positiveLabelsArray;
 	}
 
 	@Override
@@ -726,7 +740,7 @@ public class PLT extends AbstractLearner {
 
 		PriorityQueue<NodePLT> queue = new PriorityQueue<NodePLT>(11, nodeComparator);
 
-		queue.add(new NodePLT(0, 1.0));
+		queue.add(new NodePLT(tree.getRootIndex(), 1.0));
 
 		while (!queue.isEmpty()) {
 
@@ -744,13 +758,16 @@ public class PLT extends AbstractLearner {
 
 				} else {
 
-					positiveLabels.add(new EstimatePair(this.tree.getLabelIndex(node.treeIndex), currentP));
+					int labelIndex = this.tree.getLabelIndex(node.treeIndex);
+					/*Assumption: label index must be greater than or equal to 0.*/
+					if (labelIndex > -1)
+						positiveLabels.add(new EstimatePair(labelIndex, currentP));
 
 				}
 			}
 		}
 
-		// logger.info("Predicted labels: " + positiveLabels.toString());
+		logger.info("Predicted labels: " + positiveLabels.toString());
 
 		return positiveLabels;
 	}
@@ -765,7 +782,7 @@ public class PLT extends AbstractLearner {
 
 		PriorityQueue<NodePLT> queue = new PriorityQueue<NodePLT>(11, nodeComparator);
 
-		queue.add(new NodePLT(0, 1.0));
+		queue.add(new NodePLT(tree.getRootIndex(), 1.0));
 
 		while (!queue.isEmpty() && (foundTop < k)) {
 
@@ -781,12 +798,17 @@ public class PLT extends AbstractLearner {
 
 			} else {
 
-				positiveLabels.add(new EstimatePair(this.tree.getLabelIndex(node.treeIndex), currentP));
-				foundTop++;
+				int labelIndex = this.tree.getLabelIndex(node.treeIndex);
+				/*Assumption: label index must be greater than or equal to 0.*/
+				if (labelIndex > -1) {
+					positiveLabels.add(new EstimatePair(labelIndex, currentP));
+					foundTop++;
+				}
 
 			}
 		}
 
+		logger.info("Top k positive labels: " + positiveLabels);
 		return positiveLabels;
 	}
 
