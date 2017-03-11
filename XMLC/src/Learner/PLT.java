@@ -598,7 +598,7 @@ public class PLT extends AbstractLearner {
 			}
 		}
 
-		// logger.info("Predicted labels: " + positiveLabels.toString());
+		logger.info("Predicted labels: " + positiveLabels);
 
 		return positiveLabels;
 	}

@@ -14,6 +14,8 @@ public class FeatureHasherFactory {
 			fh = new MurmurHasher(fhseed, hd, d);
 		} else if (hasher.compareTo("AdaptiveMurmur") == 0) {
 			fh = new AdaptiveMurmurHasher(fhseed, hd, d);
+		} else if (hasher.compareTo("AdaptiveMurmur2") == 0) {
+			fh = new AdaptiveMurmurHasher2(fhseed, hd, d);
 		} else if (hasher.compareTo("Mask") == 0) {
 			fh = new MaskHasher(fhseed, hd, d);
 		} else {
