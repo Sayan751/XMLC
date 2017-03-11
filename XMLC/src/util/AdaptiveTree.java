@@ -175,8 +175,8 @@ public class AdaptiveTree extends Tree {
 
 	private void populateFromCompleteTree(CompleteTree tree, SortedSet<Integer> labels) {
 		if (tree != null) {
-			// Start with root (for complete tree it is 0).
-			int treeIndex = 0;
+			// Start with root.
+			int treeIndex = tree.getRootIndex();
 			this.root = new TreeNode(treeIndex);
 			indexToNode.put(treeIndex, this.root);
 
@@ -271,9 +271,4 @@ public class AdaptiveTree extends Tree {
 	public boolean hasLabel(int label) {
 		return getAllLabels().contains(label);
 	}
-
-	// @Override
-	// public int getSize() {
-	// return isDummyFirstLabel ? 0 : super.getSize();
-	// }
 }

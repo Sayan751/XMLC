@@ -283,10 +283,10 @@ public class PLT extends AbstractLearner {
 					if (treeIndex != null) {
 						positiveTreeIndices.add(treeIndex);
 
-						while (treeIndex >= 0) {
+						int rootIndex = tree.getRootIndex();
+						while (treeIndex != rootIndex) {
 							treeIndex = (int) this.tree.getParent(treeIndex);
-							if (treeIndex > 0)
-								positiveTreeIndices.add(treeIndex);
+							positiveTreeIndices.add(treeIndex);
 						}
 					}
 				}
@@ -387,10 +387,10 @@ public class PLT extends AbstractLearner {
 				if (this.tree.hasLabel(label)) {
 					positiveTreeIndices.add(treeIndex);
 
-					while (treeIndex >= 0) {
+					int rootIndex = tree.getRootIndex();
+					while (treeIndex != rootIndex) {
 						treeIndex = (int) this.tree.getParent(treeIndex);
-						if (treeIndex > 0)
-							positiveTreeIndices.add(treeIndex);
+						positiveTreeIndices.add(treeIndex);
 					}
 				}
 			}
@@ -550,7 +550,8 @@ public class PLT extends AbstractLearner {
 
 		posterior *= getPartialPosteriors(x, treeIndex);
 
-		while (treeIndex > 0) {
+		int rootIndex = tree.getRootIndex();
+		while (treeIndex != rootIndex) {
 
 			treeIndex = this.tree.getParent(treeIndex); // Math.floor((treeIndex
 														// - 1)/2);
@@ -711,24 +712,38 @@ public class PLT extends AbstractLearner {
 			this.thresholds[this.tree.getTreeIndex(j)] = t[j];
 		}
 
-		for (int j = this.tree.getNumberOfInternalNodes() - 1; j >= 0; j--) {
+		if (tree instanceof AdaptiveTree)
+			getSetThreshold(tree.getRootIndex());
+		else
+			for (int j = this.tree.getNumberOfInternalNodes() - 1; j >= 0; j--) {
 
-			ArrayList<Integer> children = this.tree.getChildNodes(j);
-			if (children != null) {
 				double minThreshold = Double.MAX_VALUE;
-				for (int childNode : children) {
+				for (int childNode : this.tree.getChildNodes(j)) {
 					minThreshold = this.thresholds[childNode] < minThreshold ? this.thresholds[childNode]
 							: minThreshold;
 				}
 
 				this.thresholds[j] = minThreshold;
 			}
-		}
 
 		// for( int i=0; i < this.thresholds.length; i++ )
 		// logger.info( "Threshold: " + i + " Th: " + String.format("%.4f",
 		// this.thresholds[i]) );
 
+	}
+
+	private double getSetThreshold(int nodeIndex) {
+		if (tree.isLeaf(nodeIndex))
+			return thresholds[nodeIndex];
+		else {
+			double minThreshold = tree.getChildNodes(nodeIndex)
+					.stream()
+					.mapToDouble(childNodeIndex -> getSetThreshold(childNodeIndex))
+					.min()
+					.getAsDouble();
+			thresholds[nodeIndex] = minThreshold;
+			return minThreshold;
+		}
 	}
 
 	@Override
