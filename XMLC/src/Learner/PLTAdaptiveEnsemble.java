@@ -108,7 +108,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		alpha = configuration.getAlpha();
 		preferMacroFmeasure = configuration.isPreferMacroFmeasure();
 
-		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
+		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
 
 		penalizingStrategy = configuration.getPenalizingStrategy();
@@ -120,8 +120,6 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		pltConfiguration = configuration.individualPLTProperties;
 		pltConfiguration.setToComputeFmeasureOnTopK(isToComputeFmeasureOnTopK);
 		pltConfiguration.setDefaultK(defaultK);
-		if (fmeasureObserverAvailable)
-			pltConfiguration.fmeasureObserver = fmeasureObserver;
 	}
 
 	@Override
@@ -129,10 +127,12 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	}
 
 	private void addNewPLT(DataManager data) {
+		if (fmeasureObserverAvailable)
+			pltConfiguration.fmeasureObserver = fmeasureObserver;
 		PLT plt = new PLT(pltConfiguration);
 		plt.allocateClassifiers(data, labelsSeen);
 		UUID learnerId = learnerRepository.create(plt, getId());
-		pltCache.add(new PLTPropertiesForCache(learnerId, plt.m));
+		pltCache.add(new PLTPropertiesForCache(learnerId, labelsSeen));
 		onPLTCreated(plt);
 	}
 
@@ -257,8 +257,8 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 					double retVal = Double.MAX_VALUE;
 					switch (penalizingStrategy) {
-					case MacroFmMinusRatioOfInstances:
-						retVal = penalizeByMacroFmMinusRatioOfInstances(c);
+					case FmMinusRatioOfInstances:
+						retVal = penalizeByFmMinusRatioOfInstances(c);
 						break;
 					case AgePlusLogOfInverseMacroFm:
 						retVal = penalizeByAgePlusLogOfInverseMacroFm(c);
@@ -277,7 +277,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	 * @return The score of {@code plt} as
 	 *         {@code 1 - (avgFmeasureOfPlt - (numberOfTrainingInstancesSeenByPlt/TotalNumberOfTrainingInstancesSeenSoFar))}
 	 */
-	private double penalizeByMacroFmMinusRatioOfInstances(PLTPropertiesForCache cachedPltDetails) {
+	private double penalizeByFmMinusRatioOfInstances(PLTPropertiesForCache cachedPltDetails) {
 		return 1 - (alpha * (preferMacroFmeasure ? cachedPltDetails.macroFmeasure : cachedPltDetails.avgFmeasure)
 				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen()));
 	}
@@ -363,7 +363,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 							entry -> {
 								Integer label = entry.getKey();
 								long numberOfPltsHavingLabel = pltCache.stream()
-										.filter(cachedPltDetails -> cachedPltDetails.numberOfLabels > label)
+										.filter(cachedPltDetails -> cachedPltDetails.labels.contains(label))
 										.count();
 								return (entry.getValue()
 										.stream()

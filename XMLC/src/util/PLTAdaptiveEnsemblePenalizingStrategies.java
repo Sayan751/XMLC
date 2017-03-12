@@ -1,5 +1,13 @@
 package util;
 
 public enum PLTAdaptiveEnsemblePenalizingStrategies {
-	MacroFmMinusRatioOfInstances, AgePlusLogOfInverseMacroFm
+	/**
+	 * Note: this works for both average fmeasure, and macro fmeasure.
+	 */
+	FmMinusRatioOfInstances,
+	/**
+	 * Note: this does not work if average fmeasure is preferred over macro
+	 * fmeasure.
+	 */
+	AgePlusLogOfInverseMacroFm
 }

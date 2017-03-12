@@ -100,10 +100,10 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 		logger.info("Ensemble size:" + pltCache.size());
 
-		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(1, ThresholdTuners.AdaptiveOfoFast,
+		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
 
-		labelsSeen = new HashSet<Integer>(Arrays.asList(0));
+		labelsSeen = new HashSet<Integer>();
 	}
 
 	private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) {
@@ -164,8 +164,12 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			// post processing
 			// Collect and cache required data from plt
 			pltCacheEntry.numberOfInstances = learner.getNumberOfTrainingInstancesSeen();
-			pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
-			pltCacheEntry.macroFmeasure = learner.getMacroFmeasure();
+
+			if (preferMacroFmeasure)
+				pltCacheEntry.macroFmeasure = learner.getMacroFmeasure();
+			else
+				pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
+
 			pltCacheEntry.numberOfLabels = learner.m;
 
 			// persist all changes happened during the training.
@@ -193,6 +197,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	}
 
 	private int getNextEpochsFromFmeasure(double fm) {
+		if (fm == 1)
+			return minEpochs;
+
 		int epochs;
 		if (fm == 0)
 			fm = fZero;
@@ -287,5 +294,10 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 	public double getMacroFmeasure() {
 		return thresholdTuner.getMacroFmeasure();
+	}
+
+	@Override
+	protected void tuneThreshold(DataManager data) {
+		thresholdTuner.getTunedThresholdsSparse(createTuningData(data));
 	}
 }

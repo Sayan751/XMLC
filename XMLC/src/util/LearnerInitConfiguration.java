@@ -6,7 +6,7 @@ import util.Constants.LearnerDefaultValues;
 public class LearnerInitConfiguration {
 	private Boolean toComputeFmeasureOnTopK;
 	private Integer defaultK;
-	public IFmeasureObserver fmeasureObserver;
+	public transient IFmeasureObserver fmeasureObserver;
 	private Boolean shuffleLabels;
 
 	/**

@@ -2,11 +2,11 @@ package preprocessing;
 
 import java.util.ArrayList;
 
-import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 
 import Data.AVPair;
 import Data.AVTable;
+import util.GuavaMurmur3_32Wrapper;
 
 /**
  * Uses murmur3_32 from guava.
@@ -18,7 +18,7 @@ public class AdaptiveMurmurHasher2 implements FeatureHasher, IAdaptiveHasher {
 
 	private int seed;
 	private int nFeatures;
-	private ArrayList<HashFunction> taskhash;
+	private ArrayList<GuavaMurmur3_32Wrapper> taskhash;
 
 	public AdaptiveMurmurHasher2() {
 	}
@@ -26,7 +26,7 @@ public class AdaptiveMurmurHasher2 implements FeatureHasher, IAdaptiveHasher {
 	public AdaptiveMurmurHasher2(int seed, int nFeatures, int nTasks) {
 		this.nFeatures = nFeatures;
 		this.seed = seed;
-		this.taskhash = new ArrayList<HashFunction>();
+		this.taskhash = new ArrayList<GuavaMurmur3_32Wrapper>();
 		for (int i = 0; i < nTasks; i++) {
 			adaptForNewTask();
 		}
@@ -35,7 +35,7 @@ public class AdaptiveMurmurHasher2 implements FeatureHasher, IAdaptiveHasher {
 	@Override
 	public void adaptForNewTask() {
 		/*only taskhash is changed as tasksign is not used in MurmurHasher to provide the sign.*/
-		this.taskhash.add(Hashing.murmur3_32(seed + this.taskhash.size()));
+		this.taskhash.add(new GuavaMurmur3_32Wrapper(seed + this.taskhash.size()));
 	}
 
 	public int getIndex(int task, int feature) {
