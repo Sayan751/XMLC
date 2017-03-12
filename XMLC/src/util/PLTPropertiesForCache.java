@@ -1,8 +1,12 @@
 package util;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import Data.AVPair;
 
 public class PLTPropertiesForCache {
 	public UUID learnerId;
@@ -11,6 +15,16 @@ public class PLTPropertiesForCache {
 	public double avgFmeasure;
 	public double macroFmeasure;
 	public Set<Integer> labels;
+	/**
+	 * Only meant for temporary caching the predictions, and not for perpetual
+	 * storing.
+	 */
+	public Map<AVPair[], int[]> tempTopkPredictions = new HashMap<>();
+	/**
+	 * Only meant for temporary caching the predictions, and not for perpetual
+	 * storing.
+	 */
+	public Map<AVPair[], HashSet<Integer>> tempPredictions = new HashMap<>();
 
 	public PLTPropertiesForCache(UUID learnerId) {
 		this.learnerId = learnerId;
@@ -32,5 +46,10 @@ public class PLTPropertiesForCache {
 		this(learnerId, numberOfLabels);
 		this.numberOfInstances = numberOfInstances;
 		this.avgFmeasure = avgFmeasure;
+	}
+
+	public void clearAllPredictions() {
+		tempPredictions.clear();
+		tempTopkPredictions.clear();
 	}
 }

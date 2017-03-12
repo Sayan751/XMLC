@@ -82,6 +82,8 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private int c;
 	private int a;
 
+	private transient boolean isPredictionCacheActive = false;
+
 	private PLTInitConfiguration pltConfiguration;
 
 	public PLTAdaptiveEnsemble(PLTAdaptiveEnsembleInitConfiguration configuration) {
@@ -187,6 +189,8 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
 		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
 
+		activatePredictionCache();
+
 		double fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
 				: getTempFMeasureOnData(data, sumFmOld);
 		logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
@@ -198,6 +202,8 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		tuneThreshold(data);
 
 		evaluate(data, false);
+
+		deactivatePredictionCache();
 	}
 
 	private PLT getPLT(UUID learnerId) {
@@ -327,9 +333,16 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
 			logger.info("Getting predictions from " + pltCacheEntry.learnerId);
-			predictions.addAll(learnerRepository
-					.read(pltCacheEntry.learnerId, PLT.class)
-					.getPositiveLabels(x));
+
+			if (isPredictionCacheActive && pltCacheEntry.tempPredictions.containsKey(x))
+				predictions.addAll(pltCacheEntry.tempPredictions.get(x));
+			else {
+				predictions.addAll(learnerRepository
+						.read(pltCacheEntry.learnerId, PLT.class)
+						.getPositiveLabels(x));
+				if (isPredictionCacheActive)
+					pltCacheEntry.tempPredictions.put(x, predictions);
+			}
 		}
 
 		return predictions;
@@ -392,8 +405,15 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		List<int[]> predictions = new ArrayList<int[]>();
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-			predictions.add(learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
-					.getTopkLabels(x, k));
+			if (isPredictionCacheActive && pltCacheEntry.tempTopkPredictions.containsKey(x))
+				predictions.add(pltCacheEntry.tempTopkPredictions.get(x));
+			else {
+				int[] topkLabels = learnerRepository.read(pltCacheEntry.learnerId, PLT.class)
+						.getTopkLabels(x, k);
+				predictions.add(topkLabels);
+				if (isPredictionCacheActive)
+					pltCacheEntry.tempTopkPredictions.put(x, topkLabels);
+			}
 		}
 		return predictions;
 	}
@@ -443,5 +463,17 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	@Override
 	protected void tuneThreshold(DataManager data) {
 		thresholdTuner.getTunedThresholdsSparse(createTuningData(data));
+	}
+
+	private void deactivatePredictionCache() {
+		isPredictionCacheActive = false;
+		pltCache.stream()
+				.forEach(plt -> plt.clearAllPredictions());
+	}
+
+	private void activatePredictionCache() {
+		isPredictionCacheActive = true;
+		pltCache.stream()
+				.forEach(plt -> plt.clearAllPredictions());
 	}
 }
