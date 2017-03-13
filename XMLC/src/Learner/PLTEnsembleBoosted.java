@@ -103,6 +103,11 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
 
+		testTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
+				configuration.tunerInitOption);
+		testTopKTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
+				configuration.tunerInitOption);
+
 		labelsSeen = new HashSet<Integer>();
 	}
 
@@ -180,8 +185,12 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		SetView<Integer> diff = Sets.difference(truePositive, labelsSeen);
 		if (!diff.isEmpty()) {
 			IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+			IAdaptiveTuner tstTuner = (IAdaptiveTuner) testTuner;
+			IAdaptiveTuner tstTopkTuner = (IAdaptiveTuner) testTopKTuner;
 			diff.forEach(label -> {
 				tuner.accomodateNewLabel(label);
+				tstTuner.accomodateNewLabel(label);
+				tstTopkTuner.accomodateNewLabel(label);
 			});
 		}
 	}
@@ -290,10 +299,6 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	@Override
 	public double getPosteriors(AVPair[] x, int label) {
 		return 0;
-	}
-
-	public double getMacroFmeasure() {
-		return thresholdTuner.getMacroFmeasure();
 	}
 
 	@Override

@@ -5,16 +5,18 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,14 +31,16 @@ import Data.EstimatePair;
 import Data.Instance;
 import IO.DataManager;
 import event.args.InstanceProcessedEventArgs;
+import event.args.InstanceTestedEventArgs;
 import event.listeners.IInstanceProcessedListener;
+import event.listeners.IInstanceTestedListener;
 import interfaces.IFmeasureObserver;
 import threshold.ThresholdTuner;
-import util.IoUtils;
-import util.LearnerInitConfiguration;
-import util.Constants.ThresholdTuningDataKeys;
 import util.Constants.LearnerDefaultValues;
 import util.Constants.LearnerInitProperties;
+import util.Constants.ThresholdTuningDataKeys;
+import util.IoUtils;
+import util.LearnerInitConfiguration;
 
 public abstract class AbstractLearner implements Serializable {
 	private static final long serialVersionUID = -1399552145906714507L;
@@ -58,6 +62,8 @@ public abstract class AbstractLearner implements Serializable {
 	protected double[] thresholds = null;
 
 	protected ThresholdTuner thresholdTuner;
+	protected ThresholdTuner testTuner;
+	protected ThresholdTuner testTopKTuner;
 
 	/**
 	 * Holds fmeasures per training instance.
@@ -77,6 +83,7 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	protected int defaultK;
 
+	transient protected Set<IInstanceTestedListener> instanceTestedListeners;
 	transient protected Set<IInstanceProcessedListener> instanceProcessedListeners;
 	transient protected IFmeasureObserver fmeasureObserver;
 
@@ -160,6 +167,7 @@ public abstract class AbstractLearner implements Serializable {
 
 	public AbstractLearner() {
 		instanceProcessedListeners = new HashSet<IInstanceProcessedListener>();
+		instanceTestedListeners = new HashSet<IInstanceTestedListener>();
 	}
 
 	public AbstractLearner(Properties properties) {
@@ -197,8 +205,10 @@ public abstract class AbstractLearner implements Serializable {
 		fmeasureObserver = configuration.fmeasureObserver;
 		fmeasureObserverAvailable = fmeasureObserver != null;
 
-		if (fmeasureObserverAvailable)
+		if (fmeasureObserverAvailable) {
 			addInstanceProcessedListener(fmeasureObserver);
+			addInstanceTestedListener(fmeasureObserver);
+		}
 	}
 
 	// naive implementation checking all labels
@@ -396,12 +406,14 @@ public abstract class AbstractLearner implements Serializable {
 				? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
 				: getPositiveLabels(instance.x);
 
-		List<Integer> truePositives = Ints.asList(instance.y);
-
-		Set<Integer> intersection = new HashSet<Integer>(truePositives);
-		intersection.retainAll(predictedPositives);
-
-		double retVal = (2.0 * intersection.size()) / (double) (instance.y.length + predictedPositives.size());
+		// List<Integer> truePositives = Ints.asList(instance.y);
+		//
+		// Set<Integer> intersection = new HashSet<Integer>(truePositives);
+		// intersection.retainAll(predictedPositives);
+		//
+		// double retVal = (2.0 * intersection.size()) / (double)
+		// (instance.y.length + predictedPositives.size());
+		double retVal = computeFmeasure(Ints.asList(instance.y), predictedPositives);
 
 		if (isToPublishFmeasure) {
 			InstanceProcessedEventArgs args = new InstanceProcessedEventArgs();
@@ -417,6 +429,13 @@ public abstract class AbstractLearner implements Serializable {
 
 	protected double getFmeasureForInstance(Instance instance) {
 		return getFmeasureForInstance(instance, false, false);
+	}
+
+	protected double computeFmeasure(Collection<Integer> truePositives, Collection<Integer> predictedPositives) {
+		Set<Integer> intersection = new HashSet<Integer>(truePositives);
+		intersection.retainAll(predictedPositives);
+
+		return (2.0 * intersection.size()) / (double) (truePositives.size() + predictedPositives.size());
 	}
 
 	/**
@@ -464,5 +483,91 @@ public abstract class AbstractLearner implements Serializable {
 
 	public void setId(UUID id) {
 		this.id = id;
+	}
+
+	public void test(DataManager testData) {
+		while (testData.hasNext()) {
+			test(testData.getNextInstance());
+		}
+	}
+
+	public void test(Instance instance) {
+
+		int[] topkPredictedPositives = getTopkLabels(instance.x, defaultK);
+		HashSet<Integer> predictedPositives = getPositiveLabels(instance.x);
+		List<Integer> truePositives = Ints.asList(instance.y);
+
+		predictedOnTestInstance(instance, predictedPositives, topkPredictedPositives);
+
+		double fmeasure = computeFmeasure(truePositives, predictedPositives);
+		double topkFmeasure = computeFmeasure(truePositives, Ints.asList(topkPredictedPositives));
+
+		logger.info("Prediction info on test instance - true positives: " + truePositives + ", predicted positves: "
+				+ predictedPositives + " (fm: " + fmeasure + "), predicted topk: "
+				+ Arrays.toString(topkPredictedPositives) + " (fm: " + topkFmeasure + ")");
+
+		InstanceTestedEventArgs args = new InstanceTestedEventArgs();
+		args.instance = instance;
+		args.fmeasure = fmeasure;
+		args.topkFmeasure = topkFmeasure;
+
+		onInstanceTested(args);
+	}
+
+	/**
+	 * Workflow step function; invoked when general and top k predictions are
+	 * computed for {@code instance}.
+	 * 
+	 * @param instance
+	 * @param predictedPositives
+	 * @param topkPredictedPositives
+	 */
+	protected void predictedOnTestInstance(Instance instance, HashSet<Integer> predictedPositives,
+			int[] topkPredictedPositives) {
+
+		Map<String, Object> tuningData = new HashMap<String, Object>();
+		List<HashSet<Integer>> trueLabels = new ArrayList<HashSet<Integer>>();
+		List<HashSet<Integer>> predictedLabels = new ArrayList<HashSet<Integer>>();
+
+		trueLabels.add(new HashSet<Integer>(Ints.asList(instance.y)));
+		predictedLabels.add(predictedPositives);
+
+		tuningData.put(ThresholdTuningDataKeys.trueLabels, trueLabels);
+		tuningData.put(ThresholdTuningDataKeys.predictedLabels, predictedLabels);
+
+		if (testTuner != null)
+			testTuner.getTunedThresholdsSparse(tuningData);
+
+		predictedLabels.clear();
+
+		predictedLabels.add(new HashSet<Integer>(Ints.asList(topkPredictedPositives)));
+
+		if (testTopKTuner != null)
+			testTopKTuner.getTunedThresholdsSparse(tuningData);
+	}
+
+	private void onInstanceTested(InstanceTestedEventArgs args) {
+		instanceTestedListeners.stream()
+				.forEach(listener -> listener.onInstanceTested(this, args));
+	}
+
+	public void addInstanceTestedListener(IInstanceTestedListener listener) {
+		instanceTestedListeners.add(listener);
+	}
+
+	public void removeInstanceProcessedListener(IInstanceTestedListener listener) {
+		instanceTestedListeners.remove(listener);
+	}
+
+	public double getMacroFmeasure() {
+		return thresholdTuner.getMacroFmeasure();
+	}
+
+	public double getTestMacroFmeasure(boolean isTopk) {
+		return isTopk ? testTopKTuner.getMacroFmeasure() : testTuner.getMacroFmeasure();
+	}
+
+	public double getTestAverageFmeasure(boolean isTopk) {
+		return fmeasureObserver.getTestAverageFmeasure(this, isTopk);
 	}
 }

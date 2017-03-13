@@ -112,6 +112,10 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
+		testTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
+				configuration.tunerInitOption);
+		testTopKTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
+				configuration.tunerInitOption);
 
 		penalizingStrategy = configuration.getPenalizingStrategy();
 		ageFunction = configuration.getAgeFunction();
@@ -161,8 +165,12 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				addNewPLT(data);
 
 				IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+				IAdaptiveTuner tstTuner = (IAdaptiveTuner) testTuner;
+				IAdaptiveTuner tstTopkTuner = (IAdaptiveTuner) testTopKTuner;
 				unseen.forEach(label -> {
 					tuner.accomodateNewLabel(label);
+					tstTuner.accomodateNewLabel(label);
+					tstTopkTuner.accomodateNewLabel(label);
 				});
 			}
 
@@ -454,10 +462,6 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 		pltDiscardedListeners.stream()
 				.forEach(listener -> listener.onPLTDiscarded(this, args));
-	}
-
-	public double getMacroFmeasure() {
-		return thresholdTuner.getMacroFmeasure();
 	}
 
 	@Override

@@ -78,7 +78,7 @@ public class PLT extends AbstractLearner {
 	protected double lambda = 0.00001;
 	protected int epochs = 1;
 	private ThresholdTuners tunerType;
-	private ThresholdTunerInitOption tunerInitOption;
+	protected ThresholdTunerInitOption tunerInitOption;
 
 	public PLT() {
 		super();
@@ -193,6 +193,14 @@ public class PLT extends AbstractLearner {
 		thresholdTuner = labelsProvided
 				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
 				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+
+		testTopKTuner = labelsProvided
+				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
+				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+		testTuner = labelsProvided
+				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
+				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+
 		if (thresholdTuner != null)
 			logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
 					.getName());
@@ -826,9 +834,4 @@ public class PLT extends AbstractLearner {
 		logger.info("Top k positive labels: " + positiveLabels);
 		return positiveLabels;
 	}
-
-	public double getMacroFmeasure() {
-		return thresholdTuner.getMacroFmeasure();
-	}
-
 }

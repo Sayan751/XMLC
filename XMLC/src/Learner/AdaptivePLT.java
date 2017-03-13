@@ -23,6 +23,8 @@ import Data.Instance;
 import IO.DataManager;
 import preprocessing.IAdaptiveHasher;
 import threshold.IAdaptiveTuner;
+import threshold.ThresholdTunerFactory;
+import threshold.ThresholdTuners;
 import util.AdaptivePLTInitConfiguration;
 import util.AdaptiveTree;
 import util.Tree;
@@ -96,7 +98,7 @@ public class AdaptivePLT extends PLT {
 		adjustTuner(label);
 
 		logger.info("Tree structure adapted.");
-		//logger.info(tree.toString());
+		// logger.info(tree.toString());
 
 		return newLeafIndex;
 	}
@@ -204,10 +206,13 @@ public class AdaptivePLT extends PLT {
 	private void adjustTuner(int label) {
 		// adjust tuner
 		IAdaptiveTuner tuner = thresholdTuner instanceof IAdaptiveTuner ? (IAdaptiveTuner) thresholdTuner : null;
-		if (tuner != null)
+		if (tuner != null) {
 			tuner.accomodateNewLabel(label);
-		else
+		} else
 			throw new IllegalArgumentException("Threshold tuner is not of type IAdaptiveTuner");
+
+		((IAdaptiveTuner) testTuner).accomodateNewLabel(label);
+		((IAdaptiveTuner) testTopKTuner).accomodateNewLabel(label);
 	}
 
 	private void adjustPropetiesWithGrowth(int growth) {
