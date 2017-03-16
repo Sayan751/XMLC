@@ -85,6 +85,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private transient boolean isPredictionCacheActive = false;
 
 	private PLTInitConfiguration pltConfiguration;
+	private int maxPLTCacheSize = Integer.MIN_VALUE;
 
 	public PLTAdaptiveEnsemble(PLTAdaptiveEnsembleInitConfiguration configuration) {
 		super(configuration);
@@ -192,6 +193,11 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				// persist all changes happened during the training.
 				learnerRepository.update(learnerId, plt);
 			}
+		}
+
+		if (maxPLTCacheSize < pltCache.size()) {
+			maxPLTCacheSize = pltCache.size();
+			logger.info("Max number of PLTs changed to " + maxPLTCacheSize);
 		}
 
 		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
