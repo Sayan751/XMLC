@@ -15,6 +15,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -146,12 +147,16 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	@Override
 	public void train(final DataManager data) {
 
-		double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure() : getAverageFmeasure(false);
-		double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getNumberOfTrainingInstancesSeen();
+		double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure()
+				: getAverageFmeasure(false, isToComputeFmeasureOnTopK);
+		double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getnTrain();
 
 		int soFar = pltCache.size() > 0
 				? pltCache.get(0).numberOfInstances
 				: 0;
+
+		if (measureTime)
+			getStopwatch().start();
 
 		while (data.hasNext() == true) {
 
@@ -180,37 +185,48 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				UUID learnerId = pltCacheEntry.learnerId;
 
 				PLT plt = getPLT(learnerId);
-				logger.info("Training " + learnerId);
 				plt.train(instance);
 
 				// Collect and cache required data from plt
-				pltCacheEntry.numberOfInstances = plt.getNumberOfTrainingInstancesSeen();
+				pltCacheEntry.numberOfInstances = plt.getnTrain();
 				if (preferMacroFmeasure)
 					pltCacheEntry.macroFmeasure = plt.getMacroFmeasure();
 				else
-					pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false);
+					pltCacheEntry.avgFmeasure = plt.getAverageFmeasure(false, isToComputeFmeasureOnTopK);
 
 				// persist all changes happened during the training.
 				learnerRepository.update(learnerId, plt);
 			}
 		}
 
+		if (measureTime) {
+			getStopwatch().stop();
+			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+		}
+
 		if (maxPLTCacheSize < pltCache.size()) {
 			maxPLTCacheSize = pltCache.size();
 			logger.info("Max number of PLTs changed to " + maxPLTCacheSize);
 		}
-
-		int numberOfTrainingInstancesInThisSession = pltCache.get(0).numberOfInstances - soFar;
-		numberOfTrainingInstancesSeen += numberOfTrainingInstancesInThisSession;
+		
+		nTrain += pltCache.get(0).numberOfInstances - soFar;
 
 		activatePredictionCache();
 
+		if (measureTime)
+			getStopwatch().start();
+		
 		double fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
 				: getTempFMeasureOnData(data, sumFmOld);
 		logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
 				+ Math.abs(fmeasureNew - fmeasureOld));
 		if ((fmeasureOld - fmeasureNew) > epsilon) {
 			discardLearners(sumFmOld, fmeasureOld, fmeasureNew, data);
+		}
+
+		if (measureTime) {
+			getStopwatch().stop();
+			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
 		}
 
 		tuneThreshold(data);
@@ -222,7 +238,6 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	private PLT getPLT(UUID learnerId) {
 		PLT plt = learnerRepository.read(learnerId, PLT.class);
-		logger.info("Revived plt:" + learnerId);
 		if (plt.fmeasureObserverAvailable) {
 			plt.fmeasureObserver = fmeasureObserver;
 			plt.addInstanceProcessedListener(fmeasureObserver);
@@ -299,7 +314,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	 */
 	private double penalizeByFmMinusRatioOfInstances(PLTPropertiesForCache cachedPltDetails) {
 		return 1 - (alpha * (preferMacroFmeasure ? cachedPltDetails.macroFmeasure : cachedPltDetails.avgFmeasure)
-				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getNumberOfTrainingInstancesSeen()));
+				- (1 - alpha) * ((double) cachedPltDetails.numberOfInstances / getnTrain()));
 	}
 
 	private double penalizeByAgePlusLogOfInverseMacroFm(PLTPropertiesForCache cachedPltDetails) {
@@ -316,7 +331,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			break;
 
 		case NumberTrainingInstancesBased:
-			retVal = (double) cachedPltDetails.numberOfInstances / (double) numberOfTrainingInstancesSeen;
+			retVal = (double) cachedPltDetails.numberOfInstances / (double) nTrain;
 			break;
 
 		default:
@@ -332,7 +347,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			sumFmOld += getFmeasureForInstance(data.getNextInstance());
 		}
 		data.reset();
-		return sumFmOld / getNumberOfTrainingInstancesSeen();
+		return sumFmOld / getnTrain();
 	}
 
 	private double getTempMacroFMeasureOnData(DataManager data) {
@@ -345,8 +360,6 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		HashSet<Integer> predictions = new HashSet<Integer>();
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-
-			logger.info("Getting predictions from " + pltCacheEntry.learnerId);
 
 			if (isPredictionCacheActive && pltCacheEntry.tempPredictions.containsKey(x))
 				predictions.addAll(pltCacheEntry.tempPredictions.get(x));

@@ -44,6 +44,7 @@ public class Constants {
 		public static final boolean isToComputeFmeasureOnTopK = true;
 		public static final int defaultK = 5;
 		public static final boolean shuffleLabels = false;
+		public static final boolean measureTime = false;
 	}
 
 	public static class PLTEnsembleBoostedDefaultValues {

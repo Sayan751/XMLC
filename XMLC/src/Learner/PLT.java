@@ -8,6 +8,7 @@ import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.math3.analysis.function.Sigmoid;
 import org.slf4j.Logger;
@@ -201,12 +202,6 @@ public class PLT extends AbstractLearner {
 				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
 				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
 
-		if (thresholdTuner != null)
-			logger.info("#### thresholdTuner set to " + thresholdTuner.getClass()
-					.getName());
-		else
-			logger.info("#### thresholdTuner can't be instantiated. Threshold will not be tuned during training.");
-
 		logger.info("#### Num. of labels: " + this.m + " Dim: " + this.d);
 		logger.info("#### Num. of node of the trees: " + this.t);
 		logger.info("#####################################################");
@@ -270,6 +265,8 @@ public class PLT extends AbstractLearner {
 		evaluate(data, true);
 
 		int oldT = T;
+		if (measureTime)
+			getStopwatch().start();
 
 		for (int ep = 0; ep < this.epochs; ep++) {
 
@@ -339,13 +336,17 @@ public class PLT extends AbstractLearner {
 				}
 			}
 			if (ep == 0) {
-				numberOfTrainingInstancesSeen += (this.T - oldT);
+				nTrain += (this.T - oldT);
 			}
 
 			data.reset();
 
 			// logger.info("--> END of Epoch: " + (ep + 1) + " (" + this.epochs
 			// + ")");
+		}
+		if (measureTime) {
+			getStopwatch().stop();
+			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
 		}
 
 		int zeroW = 0;
@@ -367,7 +368,13 @@ public class PLT extends AbstractLearner {
 		// tuning thresholds from learner is optional as of now. if made
 		// mandatory, then this kind of checks can be removed.
 		if (this.thresholdTuner != null) {
+			if (measureTime)
+				getStopwatch().start();
 			tuneThreshold(data);
+			if (measureTime) {
+				getStopwatch().stop();
+				totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			}
 		}
 
 		evaluate(data, false);
@@ -383,6 +390,7 @@ public class PLT extends AbstractLearner {
 		if (toEvaluate)
 			evaluate(instance, true);
 
+		getStopwatch().start();
 		for (int ep = 0; ep < epochs; ep++) {
 
 			HashSet<Integer> positiveTreeIndices = new HashSet<Integer>();
@@ -436,8 +444,10 @@ public class PLT extends AbstractLearner {
 				updatedPosteriors(instance.x, j, inc);
 			}
 		}
+		getStopwatch().stop();
+		totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
 
-		numberOfTrainingInstancesSeen++;
+		nTrain++;
 
 		// int zeroW = 0;
 		// double sumW = 0;
@@ -460,7 +470,10 @@ public class PLT extends AbstractLearner {
 		// tuning thresholds from learner is optional as of now. if made
 		// mandatory, then this kind of checks can be removed.
 		if (this.thresholdTuner != null) {
+			getStopwatch().start();
 			tuneThreshold(instance);
+			getStopwatch().stop();
+			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
 		}
 
 		if (toEvaluate)
@@ -471,9 +484,8 @@ public class PLT extends AbstractLearner {
 		try {
 			return this.tree.getTreeIndex(label);
 		} catch (Exception e) {
-			logger.error(e.toString());
+			throw new RuntimeException(e);
 		}
-		return null;
 	}
 
 	protected void updatedPosteriors(AVPair[] x, int label, double inc) {
@@ -607,7 +619,7 @@ public class PLT extends AbstractLearner {
 			}
 		}
 
-		logger.info("Predicted labels: " + positiveLabels);
+		// logger.info("Predicted labels: " + positiveLabels);
 
 		return positiveLabels;
 	}
@@ -689,7 +701,8 @@ public class PLT extends AbstractLearner {
 
 		int[] positiveLabelsArray = Ints.toArray(positiveLabels);
 
-		logger.info("Predicted labels: " + Arrays.toString(positiveLabelsArray));
+		// logger.info("Predicted labels: " +
+		// Arrays.toString(positiveLabelsArray));
 
 		return positiveLabelsArray;
 	}
@@ -790,7 +803,7 @@ public class PLT extends AbstractLearner {
 			}
 		}
 
-		logger.info("Predicted labels: " + positiveLabels.toString());
+		// logger.info("Predicted labels: " + positiveLabels.toString());
 
 		return positiveLabels;
 	}
@@ -831,7 +844,7 @@ public class PLT extends AbstractLearner {
 			}
 		}
 
-		logger.info("Top k positive labels: " + positiveLabels);
+		// logger.info("Top k positive labels: " + positiveLabels);
 		return positiveLabels;
 	}
 }

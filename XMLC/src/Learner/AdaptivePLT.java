@@ -23,8 +23,6 @@ import Data.Instance;
 import IO.DataManager;
 import preprocessing.IAdaptiveHasher;
 import threshold.IAdaptiveTuner;
-import threshold.ThresholdTunerFactory;
-import threshold.ThresholdTuners;
 import util.AdaptivePLTInitConfiguration;
 import util.AdaptiveTree;
 import util.Tree;

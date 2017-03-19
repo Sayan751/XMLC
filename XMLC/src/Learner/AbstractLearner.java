@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Set;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.math.Stats;
 import com.google.common.primitives.Ints;
 
@@ -56,7 +58,14 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	protected int d = 0;
 
-	protected int numberOfTrainingInstancesSeen = 0;
+	/**
+	 * Number of training instances seen.
+	 */
+	protected int nTrain = 0;
+	/**
+	 * Number of test instances seen.
+	 */
+	protected int nTest = 0;
 
 	transient protected Properties properties = null;
 	protected double[] thresholds = null;
@@ -91,6 +100,10 @@ public abstract class AbstractLearner implements Serializable {
 
 	private UUID id;
 	protected boolean shuffleLabels;
+	transient private Stopwatch stopwatch;
+	protected long totalTrainTimeInMs = 0;
+	protected long totalTestTimeInMs = 0;
+	protected boolean measureTime = false;
 
 	// abstract functions
 	public abstract void allocateClassifiers(DataManager data);
@@ -201,6 +214,7 @@ public abstract class AbstractLearner implements Serializable {
 		isToComputeFmeasureOnTopK = configuration.isToComputeFmeasureOnTopK();
 		defaultK = configuration.getDefaultK();
 		shuffleLabels = configuration.isToShuffleLabels();
+		measureTime = configuration.isMeasureTime();
 
 		fmeasureObserver = configuration.fmeasureObserver;
 		fmeasureObserverAvailable = fmeasureObserver != null;
@@ -396,35 +410,34 @@ public abstract class AbstractLearner implements Serializable {
 		return retVal;
 	}
 
-	public double getAverageFmeasure(boolean isPrequential) {
-		return fmeasureObserverAvailable ? fmeasureObserver.getAverageFmeasure(this, isPrequential)
+	public double getAverageFmeasure(boolean isPrequential, boolean isTopk) {
+		return fmeasureObserverAvailable ? fmeasureObserver.getAverageFmeasure(this, isPrequential, isTopk)
 				: Stats.meanOf(isPrequential ? prequentialFmeasures : fmeasures);
 	}
 
 	protected double getFmeasureForInstance(Instance instance, boolean isToPublishFmeasure, boolean isPrequential) {
-		Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
-				? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
-				: getPositiveLabels(instance.x);
 
-		// List<Integer> truePositives = Ints.asList(instance.y);
-		//
-		// Set<Integer> intersection = new HashSet<Integer>(truePositives);
-		// intersection.retainAll(predictedPositives);
-		//
-		// double retVal = (2.0 * intersection.size()) / (double)
-		// (instance.y.length + predictedPositives.size());
-		double retVal = computeFmeasure(Ints.asList(instance.y), predictedPositives);
+		List<Integer> truePositives = Ints.asList(instance.y);
 
 		if (isToPublishFmeasure) {
+			double fmeasure = computeFmeasure(truePositives, getPositiveLabels(instance.x));
+			double topkFmeasure = computeFmeasure(truePositives, Ints.asList(getTopkLabels(instance.x, defaultK)));
+
 			InstanceProcessedEventArgs args = new InstanceProcessedEventArgs();
 			args.instance = instance;
-			args.fmeasure = retVal;
+			args.fmeasure = fmeasure;
 			args.isPrequential = isPrequential;
-
 			onInstanceProcessed(args);
-		}
 
-		return retVal;
+			return isToComputeFmeasureOnTopK ? topkFmeasure : fmeasure;
+
+		} else {
+			Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
+					? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
+					: getPositiveLabels(instance.x);
+
+			return computeFmeasure(truePositives, predictedPositives);
+		}
 	}
 
 	protected double getFmeasureForInstance(Instance instance) {
@@ -441,8 +454,8 @@ public abstract class AbstractLearner implements Serializable {
 	/**
 	 * @return the numberOfTrainingInstancesSeen
 	 */
-	public int getNumberOfTrainingInstancesSeen() {
-		return numberOfTrainingInstancesSeen;
+	public int getnTrain() {
+		return nTrain;
 	}
 
 	public void addInstanceProcessedListener(IInstanceProcessedListener listener) {
@@ -493,8 +506,17 @@ public abstract class AbstractLearner implements Serializable {
 
 	public void test(Instance instance) {
 
+		if (measureTime)
+			getStopwatch().start();
+
 		int[] topkPredictedPositives = getTopkLabels(instance.x, defaultK);
 		HashSet<Integer> predictedPositives = getPositiveLabels(instance.x);
+
+		if (measureTime) {
+			getStopwatch().stop();
+			totalTestTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+		}
+
 		List<Integer> truePositives = Ints.asList(instance.y);
 
 		predictedOnTestInstance(instance, predictedPositives, topkPredictedPositives);
@@ -512,6 +534,8 @@ public abstract class AbstractLearner implements Serializable {
 		args.topkFmeasure = topkFmeasure;
 
 		onInstanceTested(args);
+
+		nTest++;
 	}
 
 	/**
@@ -569,5 +593,20 @@ public abstract class AbstractLearner implements Serializable {
 
 	public double getTestAverageFmeasure(boolean isTopk) {
 		return fmeasureObserver.getTestAverageFmeasure(this, isTopk);
+	}
+
+	/**
+	 * @return the stopwatch
+	 */
+	public Stopwatch getStopwatch() {
+		return stopwatch != null ? stopwatch : Stopwatch.createUnstarted();
+	}
+
+	public double getAverageTrainTimeInMs() {
+		return (double) totalTrainTimeInMs / (double) nTrain;
+	}
+
+	public double getAverageTestTimeInMs() {
+		return (double) totalTestTimeInMs / (double) nTest;
 	}
 }

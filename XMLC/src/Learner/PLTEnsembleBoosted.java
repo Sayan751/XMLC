@@ -15,6 +15,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -98,8 +99,6 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 					}
 				});
 
-		logger.info("Ensemble size:" + pltCache.size());
-
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
 
@@ -146,7 +145,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			train(instance);
 			currentDataSetSize++;
 		}
-		numberOfTrainingInstancesSeen += currentDataSetSize;
+		nTrain += currentDataSetSize;
 
 		tuneThreshold(data);
 
@@ -155,6 +154,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 	private void train(Instance instance) {
 		int epochs = minEpochs;
+
+		if (measureTime)
+			getStopwatch().start();
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
@@ -168,12 +170,12 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 			// post processing
 			// Collect and cache required data from plt
-			pltCacheEntry.numberOfInstances = learner.getNumberOfTrainingInstancesSeen();
+			pltCacheEntry.numberOfInstances = learner.getnTrain();
 
 			if (preferMacroFmeasure)
 				pltCacheEntry.macroFmeasure = learner.getMacroFmeasure();
 			else
-				pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false);
+				pltCacheEntry.avgFmeasure = learner.getAverageFmeasure(false, isToComputeFmeasureOnTopK);
 
 			pltCacheEntry.numberOfLabels = learner.m;
 
@@ -193,11 +195,15 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 				tstTopkTuner.accomodateNewLabel(label);
 			});
 		}
+
+		if (measureTime) {
+			getStopwatch().stop();
+			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+		}
 	}
 
 	private AdaptivePLT getAdaptivePLT(UUID learnerId) {
 		AdaptivePLT plt = learnerRepository.read(learnerId, AdaptivePLT.class);
-		logger.info("Revived plt:" + learnerId);
 		if (plt.fmeasureObserverAvailable) {
 			plt.fmeasureObserver = fmeasureObserver;
 			plt.addInstanceProcessedListener(fmeasureObserver);

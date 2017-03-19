@@ -300,7 +300,7 @@ public class MLL extends AbstractLearner {
 	}
 
 	@Override
-	public double getAverageFmeasure(boolean isPrequential) {
+	public double getAverageFmeasure(boolean isPrequential, boolean isTopk) {
 		// TODO Auto-generated method stub
 		return 0;
 	}

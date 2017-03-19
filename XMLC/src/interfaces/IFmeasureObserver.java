@@ -6,7 +6,7 @@ import event.listeners.IInstanceTestedListener;
 
 public interface IFmeasureObserver extends IInstanceProcessedListener, IInstanceTestedListener {
 
-	public double getAverageFmeasure(AbstractLearner learner, boolean isPrequential);
+	public double getAverageFmeasure(AbstractLearner learner, boolean isPrequential, boolean isTopk);
 
 	public double getTestAverageFmeasure(AbstractLearner learner, boolean isTopk);
 }
