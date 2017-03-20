@@ -13,7 +13,7 @@ public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguratio
 	private Boolean preferMacroFmeasure;
 
 	public AdaptivePLTInitConfiguration individualPLTConfiguration;
-	public ILearnerRepository learnerRepository;
+	public transient ILearnerRepository learnerRepository;
 	public ThresholdTunerInitOption tunerInitOption;
 
 	/**

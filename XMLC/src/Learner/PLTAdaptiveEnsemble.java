@@ -155,9 +155,10 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				? pltCache.get(0).numberOfInstances
 				: 0;
 
-		if (measureTime)
+		if (measureTime) {
+			getStopwatch().reset();
 			getStopwatch().start();
-
+		}
 		while (data.hasNext() == true) {
 
 			Instance instance = data.getNextInstance();
@@ -201,21 +202,23 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 		if (measureTime) {
 			getStopwatch().stop();
-			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 		}
 
 		if (maxPLTCacheSize < pltCache.size()) {
 			maxPLTCacheSize = pltCache.size();
 			logger.info("Max number of PLTs changed to " + maxPLTCacheSize);
 		}
-		
+
 		nTrain += pltCache.get(0).numberOfInstances - soFar;
 
 		activatePredictionCache();
 
-		if (measureTime)
+		if (measureTime) {
+			getStopwatch().reset();
 			getStopwatch().start();
-		
+		}
+
 		double fmeasureNew = preferMacroFmeasure ? getTempMacroFMeasureOnData(data)
 				: getTempFMeasureOnData(data, sumFmOld);
 		logger.info("Old Fm: " + fmeasureOld + ", new Fm: " + fmeasureNew + ", epsilon: " + epsilon + ", diff: "
@@ -226,7 +229,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 		if (measureTime) {
 			getStopwatch().stop();
-			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 		}
 
 		tuneThreshold(data);

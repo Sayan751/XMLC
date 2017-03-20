@@ -20,8 +20,8 @@ public class Constants {
 	}
 
 	public static class OFODefaultValues {
-		public static final int aSeed = 50;
-		public static final int bSeed = 100;
+		public static final int aSeed = 100;
+		public static final int bSeed = 200;
 	}
 
 	public static class PLTAdaptiveEnsembleDefaultValues {
@@ -54,6 +54,8 @@ public class Constants {
 		public static final int minEpochs = 30;
 		public static final boolean isToAggregateByMajorityVote = false;
 		public static final boolean preferMacroFmeasure = true;
+		public static final double minAlpha = 0.4;
+		public static final double maxAlpha = 1;
 	}
 
 	public static class PLTDefaultValues {

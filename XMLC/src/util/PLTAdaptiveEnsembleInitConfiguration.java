@@ -17,7 +17,7 @@ public class PLTAdaptiveEnsembleInitConfiguration extends LearnerInitConfigurati
 	private Integer c;
 
 	public PLTInitConfiguration individualPLTProperties;
-	public ILearnerRepository learnerRepository;
+	public transient ILearnerRepository learnerRepository;
 	public ThresholdTunerInitOption tunerInitOption;
 
 	/**

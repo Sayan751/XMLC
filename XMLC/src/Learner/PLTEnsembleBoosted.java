@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,6 +19,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.apache.commons.math3.distribution.UniformIntegerDistribution;
+import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ import threshold.IAdaptiveTuner;
 import threshold.ThresholdTunerFactory;
 import threshold.ThresholdTuners;
 import util.AdaptivePLTInitConfiguration;
+import util.Constants.PLTEnsembleBoostedDefaultValues;
 import util.PLTEnsembleBoostedInitConfiguration;
 import util.PLTPropertiesForCache;
 
@@ -54,8 +56,11 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	 * Prefer macro fmeasure for aggregating result.
 	 */
 	private boolean preferMacroFmeasure;
-	private static Random random;
 	private Set<Integer> labelsSeen;
+
+	private AdaptivePLTInitConfiguration pltConfiguration;
+
+	private int ensembleSize;
 
 	public PLTEnsembleBoosted() {
 	}
@@ -73,31 +78,18 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			throw new IllegalArgumentException(
 					"Invalid init configuration: required learnerRepository object is not provided.");
 
-		random = new Random();
-
 		isToAggregateByMajorityVote = configuration.isToAggregateByMajorityVote();
 		preferMacroFmeasure = configuration.isPreferMacroFmeasure();
 		fZero = configuration.getfZero();
 		minEpochs = configuration.getMinEpochs();
 		maxBranchingFactor = configuration.getMaxBranchingFactor();
 
-		AdaptivePLTInitConfiguration pltConfiguration = configuration.individualPLTConfiguration;
+		pltConfiguration = configuration.individualPLTConfiguration;
 		pltConfiguration.setToComputeFmeasureOnTopK(isToComputeFmeasureOnTopK);
 		pltConfiguration.setDefaultK(defaultK);
-		if (fmeasureObserverAvailable)
-			pltConfiguration.fmeasureObserver = fmeasureObserver;
-		pltConfiguration.setshuffleLabels(shuffleLabels);
 
-		int ensembleSize = configuration.getEnsembleSize();
+		ensembleSize = configuration.getEnsembleSize();
 		pltCache = new ArrayList<PLTPropertiesForCache>();
-		IntStream.range(0, ensembleSize)
-				.forEach(i -> {
-					try {
-						addNewPLT(pltConfiguration);
-					} catch (Exception e) {
-						throw new RuntimeException(e);
-					}
-				});
 
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
@@ -112,12 +104,6 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 	private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) {
 
-		// add random branching factor
-		int k = maxBranchingFactor == 2 ? maxBranchingFactor : random.ints(1, 2, maxBranchingFactor)
-				.findFirst()
-				.getAsInt();
-		pltConfiguration.setK(k);
-
 		AdaptivePLT plt = new AdaptivePLT(pltConfiguration);
 		UUID learnerId = learnerRepository.create(plt, getId());
 		pltCache.add(new PLTPropertiesForCache(learnerId));
@@ -125,6 +111,27 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
+
+		if (fmeasureObserverAvailable)
+			pltConfiguration.fmeasureObserver = fmeasureObserver;
+
+		UniformIntegerDistribution kRunif = new UniformIntegerDistribution(2, maxBranchingFactor);
+		UniformRealDistribution aRunif = new UniformRealDistribution(PLTEnsembleBoostedDefaultValues.minAlpha,
+				PLTEnsembleBoostedDefaultValues.maxAlpha);
+
+		IntStream.range(0, ensembleSize)
+				.forEach(i -> {
+					try {
+						// add random factors
+						pltConfiguration.setK(kRunif.sample());
+						pltConfiguration.setAlpha(aRunif.sample());
+
+						addNewPLT(pltConfiguration);
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
+				});
+
 		pltCache.forEach(pltCacheEntry -> {
 			UUID learnerId = pltCacheEntry.learnerId;
 			AdaptivePLT learner = learnerRepository.read(learnerId, AdaptivePLT.class);
@@ -155,8 +162,10 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	private void train(Instance instance) {
 		int epochs = minEpochs;
 
-		if (measureTime)
+		if (measureTime) {
+			getStopwatch().reset();
 			getStopwatch().start();
+		}
 
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
@@ -198,7 +207,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 		if (measureTime) {
 			getStopwatch().stop();
-			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 		}
 	}
 

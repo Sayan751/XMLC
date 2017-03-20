@@ -265,8 +265,10 @@ public class PLT extends AbstractLearner {
 		evaluate(data, true);
 
 		int oldT = T;
-		if (measureTime)
+		if (measureTime) {
+			getStopwatch().reset();
 			getStopwatch().start();
+		}
 
 		for (int ep = 0; ep < this.epochs; ep++) {
 
@@ -346,7 +348,7 @@ public class PLT extends AbstractLearner {
 		}
 		if (measureTime) {
 			getStopwatch().stop();
-			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 		}
 
 		int zeroW = 0;
@@ -368,12 +370,14 @@ public class PLT extends AbstractLearner {
 		// tuning thresholds from learner is optional as of now. if made
 		// mandatory, then this kind of checks can be removed.
 		if (this.thresholdTuner != null) {
-			if (measureTime)
+			if (measureTime) {
+				getStopwatch().reset();
 				getStopwatch().start();
+			}
 			tuneThreshold(data);
 			if (measureTime) {
 				getStopwatch().stop();
-				totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+				totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 			}
 		}
 
@@ -390,7 +394,11 @@ public class PLT extends AbstractLearner {
 		if (toEvaluate)
 			evaluate(instance, true);
 
-		getStopwatch().start();
+		if (measureTime) {
+			getStopwatch().reset();
+			getStopwatch().start();
+		}
+
 		for (int ep = 0; ep < epochs; ep++) {
 
 			HashSet<Integer> positiveTreeIndices = new HashSet<Integer>();
@@ -444,9 +452,10 @@ public class PLT extends AbstractLearner {
 				updatedPosteriors(instance.x, j, inc);
 			}
 		}
-		getStopwatch().stop();
-		totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
-
+		if (measureTime) {
+			getStopwatch().stop();
+			totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
+		}
 		nTrain++;
 
 		// int zeroW = 0;
@@ -470,10 +479,15 @@ public class PLT extends AbstractLearner {
 		// tuning thresholds from learner is optional as of now. if made
 		// mandatory, then this kind of checks can be removed.
 		if (this.thresholdTuner != null) {
-			getStopwatch().start();
+			if (measureTime) {
+				getStopwatch().reset();
+				getStopwatch().start();
+			}
 			tuneThreshold(instance);
-			getStopwatch().stop();
-			totalTrainTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			if (measureTime) {
+				getStopwatch().stop();
+				totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
+			}
 		}
 
 		if (toEvaluate)

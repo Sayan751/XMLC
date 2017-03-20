@@ -24,4 +24,12 @@ public class ThresholdTunerInitOption {
 	 * Initial preset value for bThresholdDenominators (OFO).
 	 */
 	public int[] bInit;
+
+	public ThresholdTunerInitOption() {
+	}
+
+	public ThresholdTunerInitOption(int a, int b) {
+		aSeed = a;
+		bSeed = b;
+	}
 }

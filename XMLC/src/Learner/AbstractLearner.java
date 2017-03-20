@@ -101,8 +101,14 @@ public abstract class AbstractLearner implements Serializable {
 	private UUID id;
 	protected boolean shuffleLabels;
 	transient private Stopwatch stopwatch;
-	protected long totalTrainTimeInMs = 0;
-	protected long totalTestTimeInMs = 0;
+	/**
+	 * Total time spent in training (in micro seconds).
+	 */
+	protected long totalTrainTime = 0;
+	/**
+	 * Total time spent in testing (in micro seconds).
+	 */
+	protected long totalTestTime = 0;
 	protected boolean measureTime = false;
 
 	// abstract functions
@@ -426,6 +432,7 @@ public abstract class AbstractLearner implements Serializable {
 			InstanceProcessedEventArgs args = new InstanceProcessedEventArgs();
 			args.instance = instance;
 			args.fmeasure = fmeasure;
+			args.topkFmeasure = topkFmeasure;
 			args.isPrequential = isPrequential;
 			onInstanceProcessed(args);
 
@@ -456,6 +463,10 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	public int getnTrain() {
 		return nTrain;
+	}
+
+	public int getnTest() {
+		return nTest;
 	}
 
 	public void addInstanceProcessedListener(IInstanceProcessedListener listener) {
@@ -506,15 +517,17 @@ public abstract class AbstractLearner implements Serializable {
 
 	public void test(Instance instance) {
 
-		if (measureTime)
+		if (measureTime) {
+			getStopwatch().reset();
 			getStopwatch().start();
+		}
 
 		int[] topkPredictedPositives = getTopkLabels(instance.x, defaultK);
 		HashSet<Integer> predictedPositives = getPositiveLabels(instance.x);
 
 		if (measureTime) {
 			getStopwatch().stop();
-			totalTestTimeInMs += getStopwatch().elapsed(TimeUnit.MILLISECONDS);
+			totalTestTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 		}
 
 		List<Integer> truePositives = Ints.asList(instance.y);
@@ -599,14 +612,22 @@ public abstract class AbstractLearner implements Serializable {
 	 * @return the stopwatch
 	 */
 	public Stopwatch getStopwatch() {
-		return stopwatch != null ? stopwatch : Stopwatch.createUnstarted();
+		if (stopwatch == null)
+			stopwatch = Stopwatch.createUnstarted();
+		return stopwatch;
 	}
 
-	public double getAverageTrainTimeInMs() {
-		return (double) totalTrainTimeInMs / (double) nTrain;
+	/**
+	 * @return Average time spent in training (in micro seconds).
+	 */
+	public double getAverageTrainTime() {
+		return nTrain > 0 ? (double) totalTrainTime / (double) nTrain : 0;
 	}
 
-	public double getAverageTestTimeInMs() {
-		return (double) totalTestTimeInMs / (double) nTest;
+	/**
+	 * @return Average time spent in testing (in micro seconds).
+	 */
+	public double getAverageTestTime() {
+		return nTest > 0 ? (double) totalTestTime / (double) nTest : 0;
 	}
 }
