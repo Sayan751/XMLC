@@ -5,7 +5,6 @@ import static java.lang.Math.log;
 import static java.lang.Math.pow;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +85,11 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	private PLTInitConfiguration pltConfiguration;
 	private int maxPLTCacheSize = Integer.MIN_VALUE;
+
+	/**
+	 * Temp storage used in discardLearners, to avoid redefinition multiple time
+	 */
+	private transient List<PLTPropertiesForCache> scoredLearners;
 
 	public PLTAdaptiveEnsemble(PLTAdaptiveEnsembleInitConfiguration configuration) {
 		super(configuration);
@@ -180,12 +183,12 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 					tstTopkTuner.accomodateNewLabel(label);
 				});
 			}
-
+			PLT plt = null;
 			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
 				UUID learnerId = pltCacheEntry.learnerId;
 
-				PLT plt = getPLT(learnerId);
+				plt = getPLT(learnerId);
 				plt.train(instance);
 
 				// Collect and cache required data from plt
@@ -265,7 +268,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private void discardLearners(final double sumFmOld, final double fmeasureOld, double fmeasureNew,
 			DataManager data) {
 
-		List<PLTPropertiesForCache> scoredLearnerIds = getPenalizedLearners().entrySet()
+		scoredLearners = getPenalizedLearners().entrySet()
 				.stream()
 				.sorted(Entry.<PLTPropertiesForCache, Double>comparingByValue()
 						.reversed())
@@ -275,9 +278,9 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		int minNumberOfPltsToRetain = (int) Math.ceil(pltCache.size() * retainmentFraction);
 
 		while ((fmeasureOld - fmeasureNew) > epsilon && pltCache.size() > minNumberOfPltsToRetain
-				&& scoredLearnerIds.size() > 0) {
+				&& scoredLearners.size() > 0) {
 
-			PLTPropertiesForCache cachedPltDetails = scoredLearnerIds.remove(0);
+			PLTPropertiesForCache cachedPltDetails = scoredLearners.remove(0);
 			if (cachedPltDetails.numberOfInstances > minTraingInstances) {
 				pltCache.remove(cachedPltDetails);
 				onPLTDiscarded(cachedPltDetails);
@@ -287,6 +290,8 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				logger.info("new fmeasure after discarding:" + fmeasureNew);
 			}
 		}
+
+		scoredLearners.clear();
 	}
 
 	private Map<PLTPropertiesForCache, Double> getPenalizedLearners() {
@@ -362,8 +367,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 		HashSet<Integer> predictions = new HashSet<Integer>();
 
-		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-
+		pltCache.forEach(pltCacheEntry -> {
 			if (isPredictionCacheActive && pltCacheEntry.tempPredictions.containsKey(x))
 				predictions.addAll(pltCacheEntry.tempPredictions.get(x));
 			else {
@@ -373,7 +377,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				if (isPredictionCacheActive)
 					pltCacheEntry.tempPredictions.put(x, predictions);
 			}
-		}
+		});
 
 		return predictions;
 	}
@@ -386,15 +390,13 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			// Map predictions to Label to Set_Of_PLTs.
 			ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>> labelLearnerMap = new ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>>();
 
-			IntStream.range(0, predictions.size())
-					.forEach(index -> Arrays
-							.stream(predictions.get(index))
-							.forEach(label -> {
-								if (!labelLearnerMap.containsKey(label))
-									labelLearnerMap.put(label, new HashSet<PLTPropertiesForCache>());
-								labelLearnerMap.get(label)
-										.add(pltCache.get(index));
-							}));
+			for (int index = 0; index < predictions.size(); index++)
+				for (int label : predictions.get(index)) {
+					if (!labelLearnerMap.containsKey(label))
+						labelLearnerMap.put(label, new HashSet<PLTPropertiesForCache>());
+					labelLearnerMap.get(label)
+							.add(pltCache.get(index));
+				}
 
 			// Assign score to each label
 			Map<Integer, Double> labelScoreMap = labelLearnerMap.entrySet()
@@ -434,7 +436,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private List<int[]> getTopkLabelsFromEnsemble(AVPair[] x, int k) {
 		List<int[]> predictions = new ArrayList<int[]>();
 
-		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+		pltCache.forEach(pltCacheEntry -> {
 			if (isPredictionCacheActive && pltCacheEntry.tempTopkPredictions.containsKey(x))
 				predictions.add(pltCacheEntry.tempTopkPredictions.get(x));
 			else {
@@ -444,7 +446,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				if (isPredictionCacheActive)
 					pltCacheEntry.tempTopkPredictions.put(x, topkLabels);
 			}
-		}
+		});
 		return predictions;
 	}
 
@@ -466,8 +468,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		PLTCreationEventArgs args = new PLTCreationEventArgs();
 		args.plt = plt;
 
-		pltCreatedListeners.stream()
-				.forEach(listener -> listener.onPLTCreated(this, args));
+		pltCreatedListeners.forEach(listener -> listener.onPLTCreated(this, args));
 	}
 
 	public void addPLTDiscardedListener(IPLTDiscardedListener listener) {
@@ -482,8 +483,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 		PLTDiscardedEventArgs args = new PLTDiscardedEventArgs();
 		args.pltId = plt.learnerId;
 
-		pltDiscardedListeners.stream()
-				.forEach(listener -> listener.onPLTDiscarded(this, args));
+		pltDiscardedListeners.forEach(listener -> listener.onPLTDiscarded(this, args));
 	}
 
 	@Override
@@ -493,13 +493,11 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	private void deactivatePredictionCache() {
 		isPredictionCacheActive = false;
-		pltCache.stream()
-				.forEach(plt -> plt.clearAllPredictions());
+		pltCache.forEach(plt -> plt.clearAllPredictions());
 	}
 
 	private void activatePredictionCache() {
 		isPredictionCacheActive = true;
-		pltCache.stream()
-				.forEach(plt -> plt.clearAllPredictions());
+		pltCache.forEach(plt -> plt.clearAllPredictions());
 	}
 }

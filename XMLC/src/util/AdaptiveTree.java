@@ -138,10 +138,7 @@ public class AdaptiveTree extends Tree {
 		} else {
 			TreeNode parent = leaf.getParent();
 
-			int maxTreeIndex = indexToNode.keySet()
-					.stream()
-					.max(Integer::compare)
-					.get();
+			int maxTreeIndex = Collections.max(indexToNode.keySet());
 
 			maxTreeIndex++;
 			TreeNode newLeaf = new TreeNode(maxTreeIndex, null, newLabel);
@@ -195,23 +192,21 @@ public class AdaptiveTree extends Tree {
 				ArrayList<Integer> childNodes = tree.getChildNodes(treeIndex);
 
 				if (childNodes != null)
-					childNodes
-							.stream()
-							.forEach(nodeIndex -> {
+					for (Integer nodeIndex : childNodes) {
 
-								TreeNode child = new TreeNode(nodeIndex, parent);
+						TreeNode child = new TreeNode(nodeIndex, parent);
 
-								if (tree.isLeaf(nodeIndex)) {
-									if (labelsProvided)
-										manageNodeLabel(child, nodeIndex, labelArr[labelToIndex.size()]);
-									else
-										manageNodeLabel(child, nodeIndex, tree);
-								} else {
-									nodeList.add(nodeIndex);
-								}
+						if (tree.isLeaf(nodeIndex)) {
+							if (labelsProvided)
+								manageNodeLabel(child, nodeIndex, labelArr[labelToIndex.size()]);
+							else
+								manageNodeLabel(child, nodeIndex, tree);
+						} else {
+							nodeList.add(nodeIndex);
+						}
 
-								this.indexToNode.put(nodeIndex, child);
-							});
+						this.indexToNode.put(nodeIndex, child);
+					}
 				else if (tree.isLeaf(treeIndex)) {
 					if (labelsProvided)
 						manageNodeLabel(parent, treeIndex, labelArr[labelToIndex.size()]);

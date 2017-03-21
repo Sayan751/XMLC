@@ -11,13 +11,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -344,19 +343,26 @@ public abstract class AbstractLearner implements Serializable {
 	 * 
 	 */
 	protected void tuneThreshold(DataManager data) {
-		Map<Integer, Double> sparseThresholds = thresholdTuner
-				.getTunedThresholdsSparse(createTuningData(data));
-		for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
-			setThreshold(entry.getKey(), entry.getValue());
-		}
+		thresholdTuner
+				.getTunedThresholdsSparse(createTuningData(data))
+				.forEach((label, threshold) -> setThreshold(label, threshold));
+
+		// Map<Integer, Double> sparseThresholds = thresholdTuner
+		// .getTunedThresholdsSparse(createTuningData(data));
+		// for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
+		// setThreshold(entry.getKey(), entry.getValue());
+		// }
 	}
 
 	protected void tuneThreshold(Instance instance) {
-		Map<Integer, Double> sparseThresholds = thresholdTuner
-				.getTunedThresholdsSparse(createTuningData(instance));
-		for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
-			setThreshold(entry.getKey(), entry.getValue());
-		}
+		thresholdTuner
+				.getTunedThresholdsSparse(createTuningData(instance))
+				.forEach((label, threshold) -> setThreshold(label, threshold));
+		// Map<Integer, Double> sparseThresholds = thresholdTuner
+		// .getTunedThresholdsSparse(createTuningData(instance));
+		// for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
+		// setThreshold(entry.getKey(), entry.getValue());
+		// }
 	}
 
 	/**
@@ -478,8 +484,7 @@ public abstract class AbstractLearner implements Serializable {
 	}
 
 	private void onInstanceProcessed(InstanceProcessedEventArgs args) {
-		instanceProcessedListeners.stream()
-				.forEach(listener -> listener.onInstanceProcessed(this, args));
+		instanceProcessedListeners.forEach(listener -> listener.onInstanceProcessed(this, args));
 	}
 
 	protected void evaluate(DataManager data, boolean isPrequential) {
@@ -584,8 +589,7 @@ public abstract class AbstractLearner implements Serializable {
 	}
 
 	private void onInstanceTested(InstanceTestedEventArgs args) {
-		instanceTestedListeners.stream()
-				.forEach(listener -> listener.onInstanceTested(this, args));
+		instanceTestedListeners.forEach(listener -> listener.onInstanceTested(this, args));
 	}
 
 	public void addInstanceTestedListener(IInstanceTestedListener listener) {

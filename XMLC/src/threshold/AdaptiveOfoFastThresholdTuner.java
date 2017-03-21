@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.IntStream;
@@ -210,12 +211,24 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 
 	private double computeMacroFmeasure(Map<Integer, Integer> aThresholdNumerators,
 			Map<Integer, Integer> bThresholdDenominators) {
-		return (2.0 / (double) aThresholdNumerators.size()) * aThresholdNumerators.keySet()
-				.stream()
-				.map(label -> (double) aThresholdNumerators.get(label) / (double) bThresholdDenominators.get(label))
-				.reduce(0.0,
-						(sum, item) -> sum += item,
-						(sum1, sum2) -> sum1 + sum2);
+
+		int size = aThresholdNumerators.size();
+
+		double accumulated = 0;
+		for (Entry<Integer, Integer> entry : aThresholdNumerators.entrySet()) {
+			accumulated += (double) entry.getValue() / (double) bThresholdDenominators.get(entry.getKey());
+		}
+
+		return (2.0 / size) * accumulated;
+
+		// return (2.0 / (double) aThresholdNumerators.size()) *
+		// aThresholdNumerators.keySet()
+		// .stream()
+		// .map(label -> (double) aThresholdNumerators.get(label) / (double)
+		// bThresholdDenominators.get(label))
+		// .reduce(0.0,
+		// (sum, item) -> sum += item,
+		// (sum1, sum2) -> sum1 + sum2);
 	}
 
 	@Override

@@ -6,7 +6,6 @@ import static java.lang.Math.round;
 import static java.lang.Math.toIntExact;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.distribution.UniformIntegerDistribution;
@@ -119,18 +117,17 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		UniformRealDistribution aRunif = new UniformRealDistribution(PLTEnsembleBoostedDefaultValues.minAlpha,
 				PLTEnsembleBoostedDefaultValues.maxAlpha);
 
-		IntStream.range(0, ensembleSize)
-				.forEach(i -> {
-					try {
-						// add random factors
-						pltConfiguration.setK(kRunif.sample());
-						pltConfiguration.setAlpha(aRunif.sample());
+		for (int i = 0; i < ensembleSize; i++) {
+			try {
+				// add random factors
+				pltConfiguration.setK(kRunif.sample());
+				pltConfiguration.setAlpha(aRunif.sample());
 
-						addNewPLT(pltConfiguration);
-					} catch (Exception e) {
-						throw new RuntimeException(e);
-					}
-				});
+				addNewPLT(pltConfiguration);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
 
 		pltCache.forEach(pltCacheEntry -> {
 			UUID learnerId = pltCacheEntry.learnerId;
@@ -167,10 +164,12 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			getStopwatch().start();
 		}
 
+		UUID learnerId = null;
+		AdaptivePLT learner = null;
 		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
-			UUID learnerId = pltCacheEntry.learnerId;
-			AdaptivePLT learner = getAdaptivePLT(learnerId);
+			learnerId = pltCacheEntry.learnerId;
+			learner = getAdaptivePLT(learnerId);
 
 			learner.train(instance, epochs, true);
 			double fm = learner.getFmeasureForInstance(instance, false, false);
@@ -241,12 +240,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 		HashSet<Integer> predictions = new HashSet<Integer>();
 
-		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-
-			predictions.addAll(learnerRepository
-					.read(pltCacheEntry.learnerId, AdaptivePLT.class)
-					.getPositiveLabels(x));
-		}
+		pltCache.forEach(
+				pltCacheEntry -> predictions.addAll(learnerRepository.read(pltCacheEntry.learnerId, AdaptivePLT.class)
+						.getPositiveLabels(x)));
 
 		return predictions;
 	}
@@ -259,15 +255,13 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			// Map predictions to Label to Set_Of_PLTs.
 			ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>> labelLearnerMap = new ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>>();
 
-			IntStream.range(0, predictions.size())
-					.forEach(index -> Arrays
-							.stream(predictions.get(index))
-							.forEach(label -> {
-								if (!labelLearnerMap.containsKey(label))
-									labelLearnerMap.put(label, new HashSet<PLTPropertiesForCache>());
-								labelLearnerMap.get(label)
-										.add(pltCache.get(index));
-							}));
+			for (int index = 0; index < predictions.size(); index++)
+				for (int label : predictions.get(index)) {
+					if (!labelLearnerMap.containsKey(label))
+						labelLearnerMap.put(label, new HashSet<PLTPropertiesForCache>());
+					labelLearnerMap.get(label)
+							.add(pltCache.get(index));
+				}
 
 			int ensembleSize = pltCache.size();
 
@@ -304,10 +298,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	private List<int[]> getTopkLabelsFromEnsemble(AVPair[] x, int k) {
 		List<int[]> predictions = new ArrayList<int[]>();
 
-		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
-			predictions.add(learnerRepository.read(pltCacheEntry.learnerId, AdaptivePLT.class)
-					.getTopkLabels(x, k));
-		}
+		pltCache.forEach(
+				pltCacheEntry -> predictions.add(learnerRepository.read(pltCacheEntry.learnerId, AdaptivePLT.class)
+						.getTopkLabels(x, k)));
 		return predictions;
 	}
 

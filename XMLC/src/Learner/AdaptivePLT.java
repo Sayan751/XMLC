@@ -2,7 +2,6 @@ package Learner;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -10,7 +9,6 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +42,13 @@ public class AdaptivePLT extends PLT {
 	 * Whether to prefer the shallowest node or the deepest node in the PLT.
 	 */
 	private boolean isToPreferShallowLeaf;
+
+	// following 4 lists are for temporary storage in adjustPropetiesWithGrowth;
+	// pulled out to avoid redefinition.
+	private List<Double> biasList;
+	private List<Double> thresholdList;
+	private List<Integer> tarrayList;
+	private List<Double> scalararrayList;
 
 	public AdaptivePLT() {
 	}
@@ -176,10 +181,8 @@ public class AdaptivePLT extends PLT {
 	 */
 	private int chooseFromPredictedPositives(PriorityQueue<ComparablePair> labelsAndPosteriors,
 			AdaptiveTree adaptableTree) {
-		int retVal;
 		double treeDepth = adaptableTree.getTreeDepth();
-
-		Stream<SimpleEntry<Integer, Double>> sorted = labelsAndPosteriors
+		return labelsAndPosteriors
 				.stream()
 				.map(n -> {
 					double leafProb = n.getKey();
@@ -193,12 +196,10 @@ public class AdaptivePLT extends PLT {
 					return new SimpleEntry<Integer, Double>(label, score);
 				})
 				.sorted(Entry.<Integer, Double>comparingByValue()
-						.reversed());
-		retVal = sorted
+						.reversed())
 				.collect(Collectors.toCollection(ArrayList<SimpleEntry<Integer, Double>>::new))
 				.get(0)
 				.getKey();
-		return retVal;
 	}
 
 	private void adjustTuner(int label) {
@@ -215,24 +216,39 @@ public class AdaptivePLT extends PLT {
 
 	private void adjustPropetiesWithGrowth(int growth) {
 		if (growth > 0) {
-			// adjust bias
-			List<Double> biasList = Arrays.stream(bias)
-					.boxed()
-					.collect(Collectors.toList());
-			List<Double> thresholdList = Arrays.stream(thresholds)
-					.boxed()
-					.collect(Collectors.toList());
-			List<Integer> TarrayList = Arrays.stream(Tarray)
-					.boxed()
-					.collect(Collectors.toList());
-			List<Double> scalararrayList = Arrays.stream(scalararray)
-					.boxed()
-					.collect(Collectors.toList());
+			biasList = new ArrayList<>(bias.length);
+			for (double item : bias)
+				biasList.add(item);
+
+			thresholdList = new ArrayList<>(thresholds.length);
+			for (double item : thresholds)
+				thresholdList.add(item);
+
+			tarrayList = new ArrayList<>(Tarray.length);
+			for (int item : Tarray)
+				tarrayList.add(item);
+
+			scalararrayList = new ArrayList<>(scalararray.length);
+			for (double item : scalararray)
+				scalararrayList.add(item);
+
+			// biasList = Arrays.stream(bias)
+			// .boxed()
+			// .collect(Collectors.toList());
+			// thresholdList = Arrays.stream(thresholds)
+			// .boxed()
+			// .collect(Collectors.toList());
+			// tarrayList = Arrays.stream(Tarray)
+			// .boxed()
+			// .collect(Collectors.toList());
+			// scalararrayList = Arrays.stream(scalararray)
+			// .boxed()
+			// .collect(Collectors.toList());
 			IAdaptiveHasher adaptiveFh = (IAdaptiveHasher) fh;
 			for (int i = 0; i < growth; i++) {
 				biasList.add(0.0);
 				thresholdList.add(0.5);
-				TarrayList.add(1);
+				tarrayList.add(1);
 				scalararrayList.add(1.0);
 				adaptiveFh.adaptForNewTask();
 			}
@@ -240,7 +256,12 @@ public class AdaptivePLT extends PLT {
 			bias = Doubles.toArray(biasList);
 			thresholds = Doubles.toArray(thresholdList);
 			scalararray = Doubles.toArray(scalararrayList);
-			Tarray = Ints.toArray(TarrayList);
+			Tarray = Ints.toArray(tarrayList);
+
+			biasList.clear();
+			thresholdList.clear();
+			scalararrayList.clear();
+			tarrayList.clear();
 		}
 	}
 }

@@ -79,8 +79,7 @@ public class TreeNode {
 			sb.append("|-(" + index + "," + label + ")" + " (depth: " + depth + ")\n");
 		else {
 			sb.append("|-" + index + " (depth: " + depth + ")\n");
-			children.stream()
-					.forEach(child -> child.buildString(indent + 1, sb));
+			children.forEach(child -> child.buildString(indent + 1, sb));
 		}
 	}
 }
