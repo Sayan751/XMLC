@@ -43,12 +43,23 @@ public class AdaptivePLT extends PLT {
 	 */
 	private boolean isToPreferShallowLeaf;
 
-	// following 4 lists are for temporary storage in adjustPropetiesWithGrowth;
-	// pulled out to avoid redefinition.
+	private int treeDepth;
+
+	// adaptable reference of the fields (lazy)
+	private transient IAdaptiveHasher adaptiveFh;
+	private transient IAdaptiveTuner adptTuner;
+	private transient IAdaptiveTuner adptTestTopKTuner;
+	private transient IAdaptiveTuner adptTestTuner;
+	private transient AdaptiveTree adaptableTree;
+
+	// followings are for temp variables; pulled out to avoid redefinition.
+	// in adjustPropetiesWithGrowth:
 	private List<Double> biasList;
 	private List<Double> thresholdList;
 	private List<Integer> tarrayList;
 	private List<Double> scalararrayList;
+	// in getTreeNodeIndexForLabel:
+	private PriorityQueue<ComparablePair> positiveLabelsAndPosteriors;
 
 	public AdaptivePLT() {
 	}
@@ -64,9 +75,16 @@ public class AdaptivePLT extends PLT {
 	@Override
 	public void allocateClassifiers(DataManager data) {
 		super.allocateClassifiers(data);
-		if ((IAdaptiveHasher) fh == null)
+
+		if (!(fh instanceof IAdaptiveHasher))
 			throw new IllegalArgumentException(
 					"Invalid init configuration: feature hasher must be of type IAdaptiveHasher.");
+
+		if (!(thresholdTuner instanceof IAdaptiveTuner) || !(testTuner instanceof IAdaptiveTuner)
+				|| !(testTopKTuner instanceof IAdaptiveTuner))
+			throw new IllegalArgumentException("Threshold tuner is not of type IAdaptiveTuner");
+
+		treeDepth = getAdaptableTree().getTreeDepth();
 	}
 
 	@Override
@@ -83,19 +101,19 @@ public class AdaptivePLT extends PLT {
 
 	@Override
 	protected Integer getTreeNodeIndexForLabel(int label, Instance instance) {
-		int treeIndex = this.tree.getTreeIndex(label);
+		int treeIndex = tree.getTreeIndex(label);
 		if (treeIndex > -1)
 			return treeIndex;
 
 		int size = t;
 
 		// choose a label and adapt
-		PriorityQueue<ComparablePair> positiveLabelsAndPosteriors = getPositiveLabelsAndPosteriors(instance.x);
-		int chosenLabelIndex = chooseLabel(positiveLabelsAndPosteriors, this.tree, instance);
-		int newLeafIndex = ((AdaptiveTree) this.tree).adaptLeaf(chosenLabelIndex, label);
+		positiveLabelsAndPosteriors = getPositiveLabelsAndPosteriors(instance.x);
+		int newLeafIndex = getAdaptableTree().adaptLeaf(chooseLabel(positiveLabelsAndPosteriors, instance), label);
 
-		t = tree.getSize();
-		m = this.tree.getNumberOfLeaves();
+		t = getAdaptableTree().getSize();
+		m = getAdaptableTree().getNumberOfLeaves();
+		treeDepth = getAdaptableTree().getTreeDepth();
 
 		adjustPropetiesWithGrowth(t - size);
 		adjustTuner(label);
@@ -103,6 +121,7 @@ public class AdaptivePLT extends PLT {
 		logger.info("Tree structure adapted.");
 		// logger.info(tree.toString());
 
+		positiveLabelsAndPosteriors.clear();
 		return newLeafIndex;
 	}
 
@@ -120,42 +139,37 @@ public class AdaptivePLT extends PLT {
 	 * </ol>
 	 * 
 	 * @param labelsAndPosteriors
-	 * @param tree
 	 * @param instance
 	 * @return
 	 */
-	private int chooseLabel(PriorityQueue<ComparablePair> labelsAndPosteriors, Tree tree, Instance instance) {
+	private int chooseLabel(PriorityQueue<ComparablePair> labelsAndPosteriors, Instance instance) {
 
-		AdaptiveTree adaptableTree = ((AdaptiveTree) tree);
 		int retVal;
 
 		if (!labelsAndPosteriors.isEmpty()) {
-			retVal = chooseFromPredictedPositives(labelsAndPosteriors, adaptableTree);
+			retVal = chooseFromPredictedPositives(labelsAndPosteriors);
 		} else {
 			// choose any label from the instance.y that also exists in the tree
 			Set<Integer> ys = new HashSet<Integer>(Ints.asList(instance.y));
-			ys.retainAll(adaptableTree.getAllLabels());
+			ys.retainAll(getAdaptableTree().getAllLabels());
 
-			retVal = chooseFromTree(adaptableTree, ys);
+			retVal = chooseFromTree(ys);
 		}
 		return retVal;
 	}
 
 	/**
 	 * Chooses a leaf from the tree which is either the shallowest or deepest
-	 * (controlled by {@code isToPreferShallowLeaf} ).
+	 * (controlled by {@code isToPreferShallowLeaf} )
 	 * 
-	 * @param adaptableTree
 	 * @return
 	 */
-	private int chooseFromTree(AdaptiveTree adaptableTree, Set<Integer> labels) {
-		int retVal;
-		double treeDepth = adaptableTree.getTreeDepth();
-		Set<Integer> labelSet = (labels != null && !labels.isEmpty()) ? labels : adaptableTree.getAllLabels();
-		retVal = labelSet
+	private int chooseFromTree(Set<Integer> labels) {
+		// double treeDepth = adaptableTree.getTreeDepth();
+		return ((labels != null && !labels.isEmpty()) ? labels : getAdaptableTree().getAllLabels())
 				.stream()
 				.map(label -> {
-					double relativeDepth = adaptableTree.getNodeDepth(adaptableTree.getTreeIndex(label))
+					double relativeDepth = getAdaptableTree().getNodeDepth(getAdaptableTree().getTreeIndex(label))
 							/ treeDepth;
 					return new SimpleEntry<Integer, Double>(label,
 							isToPreferShallowLeaf ? relativeDepth : 1 - relativeDepth);
@@ -165,7 +179,6 @@ public class AdaptivePLT extends PLT {
 				.get()
 				.getKey()
 				.intValue();
-		return retVal;
 	}
 
 	/**
@@ -176,19 +189,17 @@ public class AdaptivePLT extends PLT {
 	 * leaf with lowest posterior is preferred.
 	 * 
 	 * @param labelsAndPosteriors
-	 * @param adaptableTree
 	 * @return
 	 */
-	private int chooseFromPredictedPositives(PriorityQueue<ComparablePair> labelsAndPosteriors,
-			AdaptiveTree adaptableTree) {
-		double treeDepth = adaptableTree.getTreeDepth();
+	private int chooseFromPredictedPositives(PriorityQueue<ComparablePair> labelsAndPosteriors) {
+		// double treeDepth = adaptableTree.getTreeDepth();
 		return labelsAndPosteriors
 				.stream()
 				.map(n -> {
 					double leafProb = n.getKey();
 					int label = n.getValue();
 
-					double labelDepth = adaptableTree.getNodeDepth(adaptableTree.getTreeIndex(label));
+					double labelDepth = getAdaptableTree().getNodeDepth(getAdaptableTree().getTreeIndex(label));
 
 					double score = alpha * (isToPreferHighestProbLeaf ? leafProb : (1 - leafProb))
 							+ (1 - alpha) * (1 - labelDepth / treeDepth);
@@ -203,15 +214,9 @@ public class AdaptivePLT extends PLT {
 	}
 
 	private void adjustTuner(int label) {
-		// adjust tuner
-		IAdaptiveTuner tuner = thresholdTuner instanceof IAdaptiveTuner ? (IAdaptiveTuner) thresholdTuner : null;
-		if (tuner != null) {
-			tuner.accomodateNewLabel(label);
-		} else
-			throw new IllegalArgumentException("Threshold tuner is not of type IAdaptiveTuner");
-
-		((IAdaptiveTuner) testTuner).accomodateNewLabel(label);
-		((IAdaptiveTuner) testTopKTuner).accomodateNewLabel(label);
+		getAdptTuner().accomodateNewLabel(label);
+		getAdptTestTuner().accomodateNewLabel(label);
+		getAdptTestTopKTuner().accomodateNewLabel(label);
 	}
 
 	private void adjustPropetiesWithGrowth(int growth) {
@@ -244,13 +249,12 @@ public class AdaptivePLT extends PLT {
 			// scalararrayList = Arrays.stream(scalararray)
 			// .boxed()
 			// .collect(Collectors.toList());
-			IAdaptiveHasher adaptiveFh = (IAdaptiveHasher) fh;
 			for (int i = 0; i < growth; i++) {
 				biasList.add(0.0);
 				thresholdList.add(0.5);
 				tarrayList.add(1);
 				scalararrayList.add(1.0);
-				adaptiveFh.adaptForNewTask();
+				getAdaptiveFh().adaptForNewTask();
 			}
 			// biases.addAll(Collections.nCopies(growth, 0.0));
 			bias = Doubles.toArray(biasList);
@@ -263,5 +267,35 @@ public class AdaptivePLT extends PLT {
 			scalararrayList.clear();
 			tarrayList.clear();
 		}
+	}
+
+	private IAdaptiveHasher getAdaptiveFh() {
+		if (adaptiveFh == null)
+			adaptiveFh = (IAdaptiveHasher) fh;
+		return adaptiveFh;
+	}
+
+	private IAdaptiveTuner getAdptTuner() {
+		if (adptTuner == null)
+			adptTuner = (IAdaptiveTuner) thresholdTuner;
+		return adptTuner;
+	}
+
+	private IAdaptiveTuner getAdptTestTopKTuner() {
+		if (adptTestTopKTuner == null)
+			adptTestTopKTuner = (IAdaptiveTuner) testTopKTuner;
+		return adptTestTopKTuner;
+	}
+
+	private IAdaptiveTuner getAdptTestTuner() {
+		if (adptTestTuner == null)
+			adptTestTuner = (IAdaptiveTuner) testTuner;
+		return adptTestTuner;
+	}
+
+	private AdaptiveTree getAdaptableTree() {
+		if (adaptableTree == null)
+			adaptableTree = (AdaptiveTree) tree;
+		return adaptableTree;
 	}
 }

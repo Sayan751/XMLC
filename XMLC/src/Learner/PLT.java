@@ -191,16 +191,15 @@ public class PLT extends AbstractLearner {
 		this.tree = createTree(data, labels);
 		this.t = this.tree.getSize();
 
-		thresholdTuner = labelsProvided
-				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
-				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
-
-		testTopKTuner = labelsProvided
-				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
-				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
-		testTuner = labelsProvided
-				? ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption)
-				: ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+		if (labelsProvided) {
+			thresholdTuner = ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption);
+			testTopKTuner = ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption);
+			testTuner = ThresholdTunerFactory.createThresholdTuner(labels, tunerType, tunerInitOption);
+		} else {
+			thresholdTuner = ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+			testTopKTuner = ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+			testTuner = ThresholdTunerFactory.createThresholdTuner(m, tunerType, tunerInitOption);
+		}
 
 		logger.info("#### Num. of labels: " + this.m + " Dim: " + this.d);
 		logger.info("#### Num. of node of the trees: " + this.t);
@@ -270,6 +269,10 @@ public class PLT extends AbstractLearner {
 			getStopwatch().start();
 		}
 
+		// temp variables
+		Instance instance;
+		HashSet<Integer> positiveTreeIndices = new HashSet<Integer>(), negativeTreeIndices = new HashSet<Integer>();
+
 		for (int ep = 0; ep < this.epochs; ep++) {
 
 			// logger.info("#############--> BEGIN of Epoch: {} ({})", (ep + 1),
@@ -278,16 +281,17 @@ public class PLT extends AbstractLearner {
 
 			while (data.hasNext() == true) {
 
-				Instance instance = data.getNextInstance();
+				instance = data.getNextInstance();
 
-				HashSet<Integer> positiveTreeIndices = new HashSet<Integer>();
-				HashSet<Integer> negativeTreeIndices = new HashSet<Integer>();
+				positiveTreeIndices.clear();
+				negativeTreeIndices.clear();
 
 				for (int j = 0; j < instance.y.length; j++) {
 					// Labels start from 0
 					int label = instance.y[j];
-					Integer treeIndex = getTreeNodeIndexForLabel(label, instance);
-					if (treeIndex != null) {
+					/*this is kept outside if condition, to adapt the tree for unseen label (in case of AdaptivePLT)*/
+					int treeIndex = getTreeNodeIndexForLabel(label, instance);
+					if (tree.hasLabel(label)) {
 						positiveTreeIndices.add(treeIndex);
 
 						int rootIndex = tree.getRootIndex();
@@ -374,7 +378,9 @@ public class PLT extends AbstractLearner {
 				getStopwatch().reset();
 				getStopwatch().start();
 			}
+
 			tuneThreshold(data);
+
 			if (measureTime) {
 				getStopwatch().stop();
 				totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
@@ -399,14 +405,17 @@ public class PLT extends AbstractLearner {
 			getStopwatch().start();
 		}
 
+		HashSet<Integer> positiveTreeIndices = new HashSet<Integer>(), negativeTreeIndices = new HashSet<Integer>();
+
 		for (int ep = 0; ep < epochs; ep++) {
 
-			HashSet<Integer> positiveTreeIndices = new HashSet<Integer>();
-			HashSet<Integer> negativeTreeIndices = new HashSet<Integer>();
+			positiveTreeIndices.clear();
+			negativeTreeIndices.clear();
 
 			for (int j = 0; j < instance.y.length; j++) {
 				// Labels start from 0
 				int label = instance.y[j];
+				/*this is kept outside if condition, to adapt the tree for unseen label (in case of AdaptivePLT)*/
 				int treeIndex = getTreeNodeIndexForLabel(label, instance);
 				if (this.tree.hasLabel(label)) {
 					positiveTreeIndices.add(treeIndex);
@@ -713,12 +722,13 @@ public class PLT extends AbstractLearner {
 			}
 		}
 
-		int[] positiveLabelsArray = Ints.toArray(positiveLabels);
+		// int[] positiveLabelsArray = Ints.toArray(positiveLabels);
 
 		// logger.info("Predicted labels: " +
 		// Arrays.toString(positiveLabelsArray));
 
-		return positiveLabelsArray;
+		// return positiveLabelsArray;
+		return Ints.toArray(positiveLabels);
 	}
 
 	@Override

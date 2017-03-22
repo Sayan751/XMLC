@@ -100,12 +100,12 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		labelsSeen = new HashSet<Integer>();
 	}
 
-	private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) {
-
-		AdaptivePLT plt = new AdaptivePLT(pltConfiguration);
-		UUID learnerId = learnerRepository.create(plt, getId());
-		pltCache.add(new PLTPropertiesForCache(learnerId));
-	}
+	// private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) {
+	//
+	// UUID learnerId = learnerRepository.create(new
+	// AdaptivePLT(pltConfiguration), getId());
+	// pltCache.add(new PLTPropertiesForCache(learnerId));
+	// }
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
@@ -118,25 +118,29 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 				PLTEnsembleBoostedDefaultValues.maxAlpha);
 
 		for (int i = 0; i < ensembleSize; i++) {
-			try {
-				// add random factors
-				pltConfiguration.setK(kRunif.sample());
-				pltConfiguration.setAlpha(aRunif.sample());
+			// add random factors
+			pltConfiguration.setK(kRunif.sample());
+			pltConfiguration.setAlpha(aRunif.sample());
 
-				addNewPLT(pltConfiguration);
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
+			// addNewPLT(pltConfiguration);
 
-		pltCache.forEach(pltCacheEntry -> {
-			UUID learnerId = pltCacheEntry.learnerId;
-			AdaptivePLT learner = learnerRepository.read(learnerId, AdaptivePLT.class);
+			AdaptivePLT learner = new AdaptivePLT(pltConfiguration);
 			learner.allocateClassifiers(data);
 
-			pltCacheEntry.numberOfLabels = learner.m;
-			learnerRepository.update(learnerId, learner);
-		});
+			UUID learnerId = learnerRepository.create(learner, getId());
+			pltCache.add(new PLTPropertiesForCache(learnerId, learner.m));
+
+		}
+
+		// pltCache.forEach(pltCacheEntry -> {
+		// UUID learnerId = pltCacheEntry.learnerId;
+		// AdaptivePLT learner = learnerRepository.read(learnerId,
+		// AdaptivePLT.class);
+		// learner.allocateClassifiers(data);
+		//
+		// pltCacheEntry.numberOfLabels = learner.m;
+		// learnerRepository.update(learnerId, learner);
+		// });
 	}
 
 	@Override
@@ -144,9 +148,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		evaluate(data, true);
 		int currentDataSetSize = 0;
 		while (data.hasNext()) {
-
-			Instance instance = data.getNextInstance();
-			train(instance);
+			train(data.getNextInstance());
 			currentDataSetSize++;
 		}
 		nTrain += currentDataSetSize;
@@ -251,7 +253,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	public int[] getTopkLabels(AVPair[] x, int k) {
 		List<int[]> predictions = getTopkLabelsFromEnsemble(x, k);
 
-		if (predictions != null) {
+		if (!predictions.isEmpty()) {
 			// Map predictions to Label to Set_Of_PLTs.
 			ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>> labelLearnerMap = new ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>>();
 

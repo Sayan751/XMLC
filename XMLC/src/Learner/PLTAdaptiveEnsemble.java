@@ -162,31 +162,39 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			getStopwatch().reset();
 			getStopwatch().start();
 		}
+
+		Instance instance;
+		Set<Integer> truePositives;
+		ImmutableSet<Integer> unseen;
+
+		IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+		IAdaptiveTuner tstTuner = (IAdaptiveTuner) testTuner;
+		IAdaptiveTuner tstTopkTuner = (IAdaptiveTuner) testTopKTuner;
+
+		PLT plt = null;
+		UUID learnerId;
+
 		while (data.hasNext() == true) {
 
-			Instance instance = data.getNextInstance();
+			instance = data.getNextInstance();
 
-			Set<Integer> truePositives = new HashSet<Integer>(Ints.asList(instance.y));
-			ImmutableSet<Integer> unseen = Sets.difference(truePositives, labelsSeen)
+			truePositives = new HashSet<Integer>(Ints.asList(instance.y));
+			unseen = Sets.difference(truePositives, labelsSeen)
 					.immutableCopy();
 
 			if (!unseen.isEmpty()) {
 				labelsSeen.addAll(truePositives);
 				addNewPLT(data);
-
-				IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
-				IAdaptiveTuner tstTuner = (IAdaptiveTuner) testTuner;
-				IAdaptiveTuner tstTopkTuner = (IAdaptiveTuner) testTopKTuner;
 				unseen.forEach(label -> {
 					tuner.accomodateNewLabel(label);
 					tstTuner.accomodateNewLabel(label);
 					tstTopkTuner.accomodateNewLabel(label);
 				});
 			}
-			PLT plt = null;
+
 			for (PLTPropertiesForCache pltCacheEntry : pltCache) {
 
-				UUID learnerId = pltCacheEntry.learnerId;
+				learnerId = pltCacheEntry.learnerId;
 
 				plt = getPLT(learnerId);
 				plt.train(instance);
@@ -276,11 +284,11 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 				.collect(Collectors.toList());
 
 		int minNumberOfPltsToRetain = (int) Math.ceil(pltCache.size() * retainmentFraction);
-
+		PLTPropertiesForCache cachedPltDetails;
 		while ((fmeasureOld - fmeasureNew) > epsilon && pltCache.size() > minNumberOfPltsToRetain
 				&& scoredLearners.size() > 0) {
 
-			PLTPropertiesForCache cachedPltDetails = scoredLearners.remove(0);
+			cachedPltDetails = scoredLearners.remove(0);
 			if (cachedPltDetails.numberOfInstances > minTraingInstances) {
 				pltCache.remove(cachedPltDetails);
 				onPLTDiscarded(cachedPltDetails);

@@ -435,21 +435,19 @@ public abstract class AbstractLearner implements Serializable {
 			double fmeasure = computeFmeasure(truePositives, getPositiveLabels(instance.x));
 			double topkFmeasure = computeFmeasure(truePositives, Ints.asList(getTopkLabels(instance.x, defaultK)));
 
-			InstanceProcessedEventArgs args = new InstanceProcessedEventArgs();
-			args.instance = instance;
-			args.fmeasure = fmeasure;
-			args.topkFmeasure = topkFmeasure;
-			args.isPrequential = isPrequential;
-			onInstanceProcessed(args);
+			onInstanceProcessed(new InstanceProcessedEventArgs(instance, fmeasure, topkFmeasure, isPrequential));
 
 			return isToComputeFmeasureOnTopK ? topkFmeasure : fmeasure;
 
 		} else {
-			Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
-					? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
-					: getPositiveLabels(instance.x);
+			// Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
+			// ? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x,
+			// defaultK)))
+			// : getPositiveLabels(instance.x);
 
-			return computeFmeasure(truePositives, predictedPositives);
+			return computeFmeasure(truePositives, isToComputeFmeasureOnTopK
+					? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
+					: getPositiveLabels(instance.x));
 		}
 	}
 
