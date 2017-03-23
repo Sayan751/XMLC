@@ -113,7 +113,7 @@ public class AdaptiveTree extends Tree {
 		if (node.children.isEmpty())
 			return node.getDepth();
 		else
-			return node.children.parallelStream()
+			return node.children.stream()
 					.map(child -> computeTreeDepth(child))
 					.max(Integer::compare)
 					.get();
