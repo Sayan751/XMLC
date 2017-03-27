@@ -99,16 +99,35 @@ public abstract class AbstractLearner implements Serializable {
 
 	private UUID id;
 	protected boolean shuffleLabels;
+	protected boolean measureTime = false;
+
 	transient private Stopwatch stopwatch;
 	/**
-	 * Total time spent in training (in micro seconds).
+	 * Total time (in micro seconds) spent in training.
 	 */
 	protected long totalTrainTime = 0;
 	/**
-	 * Total time spent in testing (in micro seconds).
+	 * Total time (in micro seconds) spent in testing.
 	 */
 	protected long totalTestTime = 0;
-	protected boolean measureTime = false;
+	/**
+	 * Total time (in micro seconds) spent in prequential evaluation.
+	 */
+	private long totalPrequentialEvaluationTime = 0;
+	/**
+	 * Total time (in micro seconds) spent in prequential topk-based evaluation.
+	 */
+	private long totalPrequentialTopkEvaluationTime = 0;
+	/**
+	 * Total time (in micro seconds) spent in post-training evaluation
+	 * (evaluation on training data).
+	 */
+	private long totalEvaluationTime = 0;
+	/**
+	 * Total time (in micro seconds) spent in post-training topk-based
+	 * evaluation (evaluation on training data).
+	 */
+	private long totalTopkEvaluationTime = 0;
 
 	// abstract functions
 	public abstract void allocateClassifiers(DataManager data);
@@ -432,19 +451,41 @@ public abstract class AbstractLearner implements Serializable {
 		List<Integer> truePositives = Ints.asList(instance.y);
 
 		if (isToPublishFmeasure) {
-			double fmeasure = computeFmeasure(truePositives, getPositiveLabels(instance.x));
-			double topkFmeasure = computeFmeasure(truePositives, Ints.asList(getTopkLabels(instance.x, defaultK)));
+
+			if (measureTime) {
+				getStopwatch().reset();
+				getStopwatch().start();
+			}
+			HashSet<Integer> predictedPositives = getPositiveLabels(instance.x);
+			if (measureTime) {
+				getStopwatch().stop();
+				if (isPrequential)
+					totalPrequentialEvaluationTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
+				else
+					totalEvaluationTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
+			}
+
+			if (measureTime) {
+				getStopwatch().reset();
+				getStopwatch().start();
+			}
+			int[] predictedTopkPositives = getTopkLabels(instance.x, defaultK);
+			if (measureTime) {
+				getStopwatch().stop();
+				if (isPrequential)
+					totalPrequentialTopkEvaluationTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
+				else
+					totalTopkEvaluationTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
+			}
+
+			double fmeasure = computeFmeasure(truePositives, predictedPositives);
+			double topkFmeasure = computeFmeasure(truePositives, Ints.asList(predictedTopkPositives));
 
 			onInstanceProcessed(new InstanceProcessedEventArgs(instance, fmeasure, topkFmeasure, isPrequential));
 
 			return isToComputeFmeasureOnTopK ? topkFmeasure : fmeasure;
 
 		} else {
-			// Set<Integer> predictedPositives = isToComputeFmeasureOnTopK
-			// ? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x,
-			// defaultK)))
-			// : getPositiveLabels(instance.x);
-
 			return computeFmeasure(truePositives, isToComputeFmeasureOnTopK
 					? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
 					: getPositiveLabels(instance.x));
@@ -631,5 +672,16 @@ public abstract class AbstractLearner implements Serializable {
 	 */
 	public double getAverageTestTime() {
 		return nTest > 0 ? (double) totalTestTime / (double) nTest : 0;
+	}
+
+	public double getAverageEvaluationTime(boolean isPrequential, boolean isTopK) {
+		if (nTrain <= 0)
+			return 0;
+		if (isPrequential) {
+			return isTopK ? ((double) totalPrequentialTopkEvaluationTime / (double) nTrain)
+					: ((double) totalPrequentialEvaluationTime / (double) nTrain);
+		}
+		return isTopK ? ((double) totalTopkEvaluationTime / (double) nTrain)
+				: ((double) totalEvaluationTime / (double) nTrain);
 	}
 }

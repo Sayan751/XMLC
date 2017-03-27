@@ -6,6 +6,7 @@ import static java.lang.Math.round;
 import static java.lang.Math.toIntExact;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -113,14 +114,23 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		if (fmeasureObserverAvailable)
 			pltConfiguration.fmeasureObserver = fmeasureObserver;
 
-		UniformIntegerDistribution kRunif = new UniformIntegerDistribution(2, maxBranchingFactor);
-		UniformRealDistribution aRunif = new UniformRealDistribution(PLTEnsembleBoostedDefaultValues.minAlpha,
-				PLTEnsembleBoostedDefaultValues.maxAlpha);
+		int[] ks = null;
+		if (maxBranchingFactor > PLTEnsembleBoostedDefaultValues.minBranchingFactor) {
+			ks = new UniformIntegerDistribution(
+					PLTEnsembleBoostedDefaultValues.minBranchingFactor,
+					maxBranchingFactor).sample(ensembleSize);
+		} else {
+			ks = new int[ensembleSize];
+			Arrays.fill(ks, PLTEnsembleBoostedDefaultValues.minBranchingFactor);
+		}
+
+		double[] alphas = new UniformRealDistribution(PLTEnsembleBoostedDefaultValues.minAlpha,
+				PLTEnsembleBoostedDefaultValues.maxAlpha).sample(ensembleSize);
 
 		for (int i = 0; i < ensembleSize; i++) {
 			// add random factors
-			pltConfiguration.setK(kRunif.sample());
-			pltConfiguration.setAlpha(aRunif.sample());
+			pltConfiguration.setK(ks[i]);
+			pltConfiguration.setAlpha(alphas[i]);
 
 			// addNewPLT(pltConfiguration);
 

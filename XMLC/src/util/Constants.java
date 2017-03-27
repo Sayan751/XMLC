@@ -49,6 +49,7 @@ public class Constants {
 
 	public static class PLTEnsembleBoostedDefaultValues {
 		public static final int ensembleSize = 10;
+		public static final int minBranchingFactor = 2;
 		public static final int maxBranchingFactor = 5;
 		public static final double fZero = 0.001;
 		public static final int minEpochs = 30;

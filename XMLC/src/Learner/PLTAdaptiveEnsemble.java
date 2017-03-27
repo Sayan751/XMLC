@@ -150,6 +150,8 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	@Override
 	public void train(final DataManager data) {
 
+		evaluate(data, true);
+
 		double fmeasureOld = preferMacroFmeasure ? getMacroFmeasure()
 				: getAverageFmeasure(false, isToComputeFmeasureOnTopK);
 		double sumFmOld = preferMacroFmeasure ? -1 : fmeasureOld * getnTrain();
@@ -335,7 +337,10 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 
 	private double penalizeByAgePlusLogOfInverseMacroFm(PLTPropertiesForCache cachedPltDetails) {
 		return alpha * pow(c * getAgeOfPlt(cachedPltDetails), a)
-				+ (1 - alpha) * pow(log(1 / cachedPltDetails.macroFmeasure), a);
+				+ (1 - alpha) * pow(
+						log(1.0 / (preferMacroFmeasure ? cachedPltDetails.macroFmeasure
+								: cachedPltDetails.avgFmeasure)),
+						a);
 	}
 
 	private double getAgeOfPlt(PLTPropertiesForCache cachedPltDetails) {
@@ -394,7 +399,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	public int[] getTopkLabels(AVPair[] x, int k) {
 		List<int[]> predictions = getTopkLabelsFromEnsemble(x, k);
 
-		if (predictions != null) {
+		if (predictions != null && !predictions.isEmpty()) {
 			// Map predictions to Label to Set_Of_PLTs.
 			ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>> labelLearnerMap = new ConcurrentHashMap<Integer, Set<PLTPropertiesForCache>>();
 
@@ -438,7 +443,7 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 					.toArray();
 		}
 
-		return null;
+		return new int[0];
 	}
 
 	private List<int[]> getTopkLabelsFromEnsemble(AVPair[] x, int k) {

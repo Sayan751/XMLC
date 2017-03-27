@@ -37,7 +37,7 @@ public class AdaptiveTree extends Tree {
 		// Get the basic details
 		m = tree.m;
 		k = tree.k;
-		isDummyFirstLabel = m == 0 || (labels.size() == 1 && labels.first() == -1);
+		isDummyFirstLabel = m == 0 || (labels != null && labels.size() == 1 && labels.first() == -1);
 		size = isDummyFirstLabel ? 1 : tree.size;
 		numberOfInternalNodes = isDummyFirstLabel ? 1 : tree.numberOfInternalNodes;
 
