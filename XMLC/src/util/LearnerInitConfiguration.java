@@ -7,7 +7,7 @@ public class LearnerInitConfiguration {
 	private Boolean toComputeFmeasureOnTopK;
 	private Integer defaultK;
 	public transient IFmeasureObserver fmeasureObserver;
-	private Boolean shuffleLabels;
+	private Boolean toShuffleLabels;
 	private Boolean measureTime;
 
 	/**
@@ -45,7 +45,7 @@ public class LearnerInitConfiguration {
 	 * @return the shuffleLabels
 	 */
 	public boolean isToShuffleLabels() {
-		return shuffleLabels != null ? shuffleLabels
+		return toShuffleLabels != null ? toShuffleLabels
 				: LearnerDefaultValues.shuffleLabels;
 	}
 
@@ -54,7 +54,7 @@ public class LearnerInitConfiguration {
 	 *            the shuffleLabels to set
 	 */
 	public void setshuffleLabels(boolean isToShuffleLabels) {
-		this.shuffleLabels = isToShuffleLabels;
+		this.toShuffleLabels = isToShuffleLabels;
 	}
 
 	/**

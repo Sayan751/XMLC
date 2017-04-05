@@ -93,9 +93,9 @@ public abstract class AbstractLearner implements Serializable {
 
 	transient protected Set<IInstanceTestedListener> instanceTestedListeners;
 	transient protected Set<IInstanceProcessedListener> instanceProcessedListeners;
-	transient protected IFmeasureObserver fmeasureObserver;
+	transient public IFmeasureObserver fmeasureObserver;
 
-	protected boolean fmeasureObserverAvailable;
+	public boolean fmeasureObserverAvailable;
 
 	private UUID id;
 	protected boolean shuffleLabels;
