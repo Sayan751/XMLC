@@ -19,12 +19,15 @@ public class PLTPropertiesForCache {
 	 * Only meant for temporary caching the predictions, and not for perpetual
 	 * storing.
 	 */
-	public Map<AVPair[], int[]> tempTopkPredictions = new HashMap<>();
+	transient public Map<AVPair[], int[]> tempTopkPredictions = new HashMap<>();
 	/**
 	 * Only meant for temporary caching the predictions, and not for perpetual
 	 * storing.
 	 */
-	public Map<AVPair[], HashSet<Integer>> tempPredictions = new HashMap<>();
+	transient public Map<AVPair[], HashSet<Integer>> tempPredictions = new HashMap<>();
+
+	public PLTPropertiesForCache() {
+	}
 
 	public PLTPropertiesForCache(UUID learnerId) {
 		this.learnerId = learnerId;

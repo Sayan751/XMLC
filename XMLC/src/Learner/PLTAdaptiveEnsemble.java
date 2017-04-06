@@ -47,28 +47,37 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private static Logger logger = LoggerFactory.getLogger(PLTAdaptiveEnsemble.class);
 
 	transient private ILearnerRepository learnerRepository;
+
+	public ILearnerRepository getLearnerRepository() {
+		return learnerRepository;
+	}
+
+	public void setLearnerRepository(ILearnerRepository learnerRepository) {
+		this.learnerRepository = learnerRepository;
+	}
+
 	private List<PLTPropertiesForCache> pltCache;
 
-	transient private Set<IPLTCreatedListener> pltCreatedListeners;
-	transient private Set<IPLTDiscardedListener> pltDiscardedListeners;
+	transient private Set<IPLTCreatedListener> pltCreatedListeners = new HashSet<IPLTCreatedListener>();
+	transient private Set<IPLTDiscardedListener> pltDiscardedListeners = new HashSet<IPLTDiscardedListener>();
 
 	/**
 	 * Slack variable for fmeasure comparison.
 	 */
-	private final double epsilon;
+	private double epsilon;
 	/**
 	 * Fraction of learners to retain in the discarding phase.
 	 */
-	private final double retainmentFraction;
+	private double retainmentFraction;
 	/**
 	 * Minimum number of training instances an individual PLT should be trained
 	 * on, before discarding.
 	 */
-	private final int minTraingInstances;
+	private int minTraingInstances;
 	/**
 	 * Relative weight ([0, 1]) used to penalize the learner during discarding.
 	 */
-	private final double alpha;
+	private double alpha;
 	/**
 	 * Prefer macro fmeasure for discarding learners and aggregating result.
 	 */
@@ -84,12 +93,15 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 	private transient boolean isPredictionCacheActive = false;
 
 	private PLTInitConfiguration pltConfiguration;
-	private int maxPLTCacheSize = Integer.MIN_VALUE;
+	private int maxPLTCacheSize;
 
 	/**
 	 * Temp storage used in discardLearners, to avoid redefinition multiple time
 	 */
 	private transient List<PLTPropertiesForCache> scoredLearners;
+
+	public PLTAdaptiveEnsemble() {
+	}
 
 	public PLTAdaptiveEnsemble(PLTAdaptiveEnsembleInitConfiguration configuration) {
 		super(configuration);
@@ -104,11 +116,9 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			throw new IllegalArgumentException(
 					"Invalid init configuration: required learnerRepository object is not provided.");
 
+		maxPLTCacheSize = Integer.MIN_VALUE;
 		pltCache = new ArrayList<PLTPropertiesForCache>();
-		pltCreatedListeners = new HashSet<IPLTCreatedListener>();
-		pltDiscardedListeners = new HashSet<IPLTDiscardedListener>();
 		labelsSeen = new TreeSet<Integer>();
-
 		epsilon = configuration.getEpsilon();
 		retainmentFraction = configuration.getRetainmentFraction();
 		minTraingInstances = configuration.getMinTraingInstances();

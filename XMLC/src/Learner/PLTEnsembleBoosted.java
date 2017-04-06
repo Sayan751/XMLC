@@ -46,6 +46,15 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	private static Logger logger = LoggerFactory.getLogger(PLTEnsembleBoosted.class);
 
 	transient private ILearnerRepository learnerRepository;
+
+	public ILearnerRepository getLearnerRepository() {
+		return learnerRepository;
+	}
+
+	public void setLearnerRepository(ILearnerRepository learnerRepository) {
+		this.learnerRepository = learnerRepository;
+	}
+
 	private List<PLTPropertiesForCache> pltCache;
 	private int maxBranchingFactor;
 	private int minEpochs;
@@ -100,13 +109,6 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 		labelsSeen = new HashSet<Integer>();
 	}
-
-	// private void addNewPLT(AdaptivePLTInitConfiguration pltConfiguration) {
-	//
-	// UUID learnerId = learnerRepository.create(new
-	// AdaptivePLT(pltConfiguration), getId());
-	// pltCache.add(new PLTPropertiesForCache(learnerId));
-	// }
 
 	@Override
 	public void allocateClassifiers(DataManager data) {
