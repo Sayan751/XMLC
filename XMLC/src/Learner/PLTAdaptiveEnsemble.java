@@ -394,11 +394,12 @@ public class PLTAdaptiveEnsemble extends AbstractLearner {
 			if (isPredictionCacheActive && pltCacheEntry.tempPredictions.containsKey(x))
 				predictions.addAll(pltCacheEntry.tempPredictions.get(x));
 			else {
-				predictions.addAll(learnerRepository
+				final HashSet<Integer> positiveLabels = learnerRepository
 						.read(pltCacheEntry.learnerId, PLT.class)
-						.getPositiveLabels(x));
+						.getPositiveLabels(x);
+				predictions.addAll(positiveLabels);
 				if (isPredictionCacheActive)
-					pltCacheEntry.tempPredictions.put(x, predictions);
+					pltCacheEntry.tempPredictions.put(x, positiveLabels);
 			}
 		});
 
