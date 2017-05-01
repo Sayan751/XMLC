@@ -1,12 +1,9 @@
 package threshold;
 
-import java.util.Properties;
 import java.util.SortedSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import util.Constants.LearnerInitProperties;
 
 public abstract class ThresholdTunerFactory {
 	private static Logger logger = LoggerFactory.getLogger(ThresholdTunerFactory.class);

@@ -1,9 +1,7 @@
 package Learner;
 
-import static java.lang.Math.exp;
 import static java.lang.Math.log;
-import static java.lang.Math.round;
-import static java.lang.Math.toIntExact;
+import static java.lang.Math.max;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,15 +33,15 @@ import threshold.IAdaptiveTuner;
 import threshold.ThresholdTunerFactory;
 import threshold.ThresholdTuners;
 import util.AdaptivePLTInitConfiguration;
-import util.Constants.PLTEnsembleBoostedDefaultValues;
-import util.PLTEnsembleBoostedInitConfiguration;
-import util.PLTPropertiesForCache;
+import util.Constants.PLTEnsembleBoostedWithThresholdDefaultValues;
+import util.PLTCachePropertiesForBoosting;
+import util.PLTEnsembleBoostedWithThresholdInitConfiguration;
 
-public class PLTEnsembleBoosted extends AbstractLearner {
+public class PLTEnsembleBoostedWithThreshold extends AbstractLearner {
 
 	private static final long serialVersionUID = -8401089694679688912L;
 
-	private static Logger logger = LoggerFactory.getLogger(PLTEnsembleBoosted.class);
+	private static Logger logger = LoggerFactory.getLogger(PLTEnsembleBoostedWithThreshold.class);
 
 	transient private ILearnerRepository learnerRepository;
 
@@ -55,26 +53,25 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		this.learnerRepository = learnerRepository;
 	}
 
-	private List<PLTPropertiesForCache> pltCache;
+	private List<PLTCachePropertiesForBoosting> pltCache;
 	private int maxBranchingFactor;
-	private int minEpochs;
-	private double fZero;
 	private boolean isToAggregateByMajorityVote;
+	private boolean isToAggregateByLambdaCW;
 	/**
 	 * Prefer macro fmeasure for aggregating result.
 	 */
 	private boolean preferMacroFmeasure;
 	private Set<Integer> labelsSeen;
+	private int ensembleSize;
+	private int minEpochs;
 	private int kSlack;
 
 	private AdaptivePLTInitConfiguration pltConfiguration;
 
-	private int ensembleSize;
-
-	public PLTEnsembleBoosted() {
+	public PLTEnsembleBoostedWithThreshold() {
 	}
 
-	public PLTEnsembleBoosted(PLTEnsembleBoostedInitConfiguration configuration) {
+	public PLTEnsembleBoostedWithThreshold(PLTEnsembleBoostedWithThresholdInitConfiguration configuration) {
 		super(configuration);
 
 		if (configuration.tunerInitOption == null || configuration.tunerInitOption.aSeed == null
@@ -88,10 +85,14 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 					"Invalid init configuration: required learnerRepository object is not provided.");
 
 		isToAggregateByMajorityVote = configuration.isToAggregateByMajorityVote();
+		isToAggregateByLambdaCW = configuration.isToAggregateByLambdaCW();
+		if (isToAggregateByLambdaCW && isToAggregateByMajorityVote)
+			throw new IllegalArgumentException(
+					"Incorrect aggregation configuration; aggregation can be done by majority vote or by lambdas, not both.");
+
 		preferMacroFmeasure = configuration.isPreferMacroFmeasure();
-		fZero = configuration.getfZero();
-		minEpochs = configuration.getMinEpochs();
 		maxBranchingFactor = configuration.getMaxBranchingFactor();
+		minEpochs = configuration.getMinEpochs();
 		kSlack = configuration.getkSlack();
 
 		pltConfiguration = configuration.individualPLTConfiguration;
@@ -99,7 +100,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		pltConfiguration.setDefaultK(defaultK);
 
 		ensembleSize = configuration.getEnsembleSize();
-		pltCache = new ArrayList<PLTPropertiesForCache>();
+		pltCache = new ArrayList<PLTCachePropertiesForBoosting>();
 
 		thresholdTuner = ThresholdTunerFactory.createThresholdTuner(0, ThresholdTuners.AdaptiveOfoFast,
 				configuration.tunerInitOption);
@@ -119,18 +120,18 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			pltConfiguration.fmeasureObserver = fmeasureObserver;
 
 		int[] ks = null;
-		if (maxBranchingFactor > PLTEnsembleBoostedDefaultValues.minBranchingFactor) {
+		double[] alphas = null;
+		if (maxBranchingFactor > PLTEnsembleBoostedWithThresholdDefaultValues.minBranchingFactor) {
 			ks = new UniformIntegerDistribution(
-					PLTEnsembleBoostedDefaultValues.minBranchingFactor,
+					PLTEnsembleBoostedWithThresholdDefaultValues.minBranchingFactor,
 					maxBranchingFactor).sample(ensembleSize);
 		} else {
 			ks = new int[ensembleSize];
-			Arrays.fill(ks, PLTEnsembleBoostedDefaultValues.minBranchingFactor);
+			Arrays.fill(ks, PLTEnsembleBoostedWithThresholdDefaultValues.minBranchingFactor);
 		}
 
-		double[] alphas = new UniformRealDistribution(PLTEnsembleBoostedDefaultValues.minAlpha,
-				PLTEnsembleBoostedDefaultValues.maxAlpha).sample(ensembleSize);
-
+		alphas = new UniformRealDistribution(PLTEnsembleBoostedWithThresholdDefaultValues.minAlpha,
+				PLTEnsembleBoostedWithThresholdDefaultValues.maxAlpha).sample(ensembleSize);
 		for (int i = 0; i < ensembleSize; i++) {
 			// add random factors
 			pltConfiguration.setK(ks[i]);
@@ -140,19 +141,18 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			learner.allocateClassifiers(data);
 
 			UUID learnerId = learnerRepository.create(learner, getId());
-			pltCache.add(new PLTPropertiesForCache(learnerId, learner.m));
+			pltCache.add(new PLTCachePropertiesForBoosting(learnerId, learner.m));
 		}
 	}
 
 	@Override
 	public void train(DataManager data) {
 		evaluate(data, true);
-		int currentDataSetSize = 0;
+
 		while (data.hasNext()) {
 			train(data.getNextInstance());
-			currentDataSetSize++;
+			nTrain++;
 		}
-		nTrain += currentDataSetSize;
 
 		tuneThreshold(data);
 
@@ -160,7 +160,8 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 	}
 
 	private void train(Instance instance) {
-		int epochs = minEpochs;
+		double lambda = minEpochs;
+		int epochs;
 
 		if (measureTime) {
 			getStopwatch().reset();
@@ -170,18 +171,50 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 		Set<Integer> truePositive = new HashSet<Integer>(Ints.asList(instance.y));
 		ImmutableSet<Integer> diff = Sets.difference(truePositive, labelsSeen)
 				.immutableCopy();
+		if (!diff.isEmpty()) {
+			labelsSeen.addAll(truePositive);
+			IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
+			IAdaptiveTuner tstTuner = (IAdaptiveTuner) testTuner;
+			IAdaptiveTuner tstTopkTuner = (IAdaptiveTuner) testTopKTuner;
+			diff.forEach(label -> {
+				tuner.accomodateNewLabel(label);
+				tstTuner.accomodateNewLabel(label);
+				tstTopkTuner.accomodateNewLabel(label);
+			});
+		}
+
+		// expected f-measure for random guess
+		double randomGuessFm = (double) truePositive.size() / (double) (truePositive.size() + 0.5 * labelsSeen.size());
 
 		UUID learnerId = null;
 		AdaptivePLT learner = null;
-		for (PLTPropertiesForCache pltCacheEntry : pltCache) {
+
+		for (PLTCachePropertiesForBoosting pltCacheEntry : pltCache) {
+
+			epochs = max((new PoissonDistribution(lambda)).sample(), minEpochs);
+
+			logger.info("Current epochs: " + epochs);
 
 			learnerId = pltCacheEntry.learnerId;
 			learner = getAdaptivePLT(learnerId);
 
 			learner.train(instance, epochs, true);
 			double fm = learner.getFmeasureForInstance(instance, false, false, false);
-			epochs = getNextEpochsFromFmeasure(fm);
-			logger.info("Current fmeasure: " + fm + ", next epochs: " + epochs);
+
+			if (fm > randomGuessFm) {
+				pltCacheEntry.lambdaCorrect += lambda * fm;
+				lambda = lambda * ((pltCacheEntry.lambdaCorrect + pltCacheEntry.lambdaWrong)
+						/ (2 * pltCacheEntry.lambdaCorrect));
+			} else {
+				pltCacheEntry.lambdaWrong += lambda * (1 - fm);
+				lambda = lambda * ((pltCacheEntry.lambdaCorrect + pltCacheEntry.lambdaWrong)
+						/ (2 * pltCacheEntry.lambdaWrong));
+			}
+
+			logger.info("Current fmeasure: " + fm + "(" + ((fm > randomGuessFm) ? "above" : "below")
+					+ " threshold), lambda: "
+					+ lambda + ", lambda_sc: "
+					+ pltCacheEntry.lambdaCorrect + ", lambda_sw: " + pltCacheEntry.lambdaWrong);
 
 			// post processing
 			// Collect and cache required data from plt
@@ -198,18 +231,6 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			learnerRepository.update(learnerId, learner);
 		}
 
-		if (!diff.isEmpty()) {
-			labelsSeen.addAll(truePositive);
-			IAdaptiveTuner tuner = (IAdaptiveTuner) thresholdTuner;
-			IAdaptiveTuner tstTuner = (IAdaptiveTuner) testTuner;
-			IAdaptiveTuner tstTopkTuner = (IAdaptiveTuner) testTopKTuner;
-			diff.forEach(label -> {
-				tuner.accomodateNewLabel(label);
-				tstTuner.accomodateNewLabel(label);
-				tstTopkTuner.accomodateNewLabel(label);
-			});
-		}
-
 		if (measureTime) {
 			getStopwatch().stop();
 			totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
@@ -223,23 +244,6 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			plt.addInstanceProcessedListener(fmeasureObserver);
 		}
 		return plt;
-	}
-
-	private int getNextEpochsFromFmeasure(double fm) {
-		if (fm == 1)
-			return minEpochs;
-
-		int epochs;
-		if (fm == 0)
-			fm = fZero;
-
-		double alpha = 0.5 * log((1 - fm) / fm);
-		epochs = toIntExact(round(minEpochs * exp(alpha)));
-
-		PoissonDistribution pois = new PoissonDistribution(epochs);
-		epochs = pois.sample();
-
-		return epochs < minEpochs ? minEpochs : epochs;
 	}
 
 	public HashSet<Integer> getPositiveLabels(AVPair[] x) {
@@ -259,12 +263,14 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 
 		if (!predictions.isEmpty()) {
 			Map<Integer, Double> scoreMap = new HashMap<>();
-			double fm = 0;
+			double logLambda = 0, fm = 0;
 
 			for (int i = 0; i < ensembleSize; i++) {
-				PLTPropertiesForCache cachedPltDetails = pltCache.get(i);
+				PLTCachePropertiesForBoosting cachedPltDetails = pltCache.get(i);
 
-				if (!isToAggregateByMajorityVote) {
+				if (isToAggregateByLambdaCW) {
+					logLambda = log(cachedPltDetails.lambdaCorrect / cachedPltDetails.lambdaWrong);
+				} else if (!(isToAggregateByLambdaCW || isToAggregateByMajorityVote)) {
 					fm = preferMacroFmeasure ? cachedPltDetails.macroFmeasure : cachedPltDetails.avgFmeasure;
 				}
 
@@ -275,8 +281,9 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 					}
 
 					if (isToAggregateByMajorityVote) {
-						// weighted majority vote
 						scoreMap.put(label, scoreMap.get(label) + pair.getP());
+					} else if (isToAggregateByLambdaCW) {
+						scoreMap.put(label, scoreMap.get(label) + (logLambda * pair.getP()));
 					} else {
 						scoreMap.put(label, scoreMap.get(label) + (fm * pair.getP()));
 					}

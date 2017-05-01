@@ -2,15 +2,15 @@ package util;
 
 import interfaces.ILearnerRepository;
 import threshold.ThresholdTunerInitOption;
-import util.Constants.PLTEnsembleBoostedDefaultValues;
+import util.Constants.PLTEnsembleBoostedWithThresholdDefaultValues;
 
-public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguration {
+public class PLTEnsembleBoostedWithThresholdInitConfiguration extends LearnerInitConfiguration {
 	private Integer ensembleSize;
-	private Double fZero;
 	private Boolean isToAggregateByMajorityVote;
+	private Boolean isToAggregateByLambdaCW;
 	private Integer maxBranchingFactor;
-	private Integer minEpochs;
 	private Boolean preferMacroFmeasure;
+	private Integer minEpochs;
 	private Integer kSlack;
 
 	public AdaptivePLTInitConfiguration individualPLTConfiguration;
@@ -21,7 +21,7 @@ public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguratio
 	 * @return the ensembleSize
 	 */
 	public int getEnsembleSize() {
-		return ensembleSize != null ? ensembleSize : PLTEnsembleBoostedDefaultValues.ensembleSize;
+		return ensembleSize != null ? ensembleSize : PLTEnsembleBoostedWithThresholdDefaultValues.ensembleSize;
 	}
 
 	/**
@@ -33,25 +33,11 @@ public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguratio
 	}
 
 	/**
-	 * @return the fZero
-	 */
-	public double getfZero() {
-		return fZero != null ? fZero : PLTEnsembleBoostedDefaultValues.fZero;
-	}
-
-	/**
-	 * @param fZero
-	 *            the fZero to set
-	 */
-	public void setfZero(double fZero) {
-		this.fZero = fZero;
-	}
-
-	/**
 	 * @return the maxBranchingFactor
 	 */
 	public int getMaxBranchingFactor() {
-		return maxBranchingFactor != null ? maxBranchingFactor : PLTEnsembleBoostedDefaultValues.maxBranchingFactor;
+		return maxBranchingFactor != null ? maxBranchingFactor
+				: PLTEnsembleBoostedWithThresholdDefaultValues.maxBranchingFactor;
 	}
 
 	/**
@@ -63,26 +49,11 @@ public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguratio
 	}
 
 	/**
-	 * @return the minEpochs
-	 */
-	public int getMinEpochs() {
-		return minEpochs != null ? minEpochs : PLTEnsembleBoostedDefaultValues.minEpochs;
-	}
-
-	/**
-	 * @param minEpochs
-	 *            the minEpochs to set
-	 */
-	public void setMinEpochs(int minEpochs) {
-		this.minEpochs = minEpochs;
-	}
-
-	/**
 	 * @return the preferMacroFmeasure
 	 */
 	public boolean isPreferMacroFmeasure() {
 		return preferMacroFmeasure != null ? preferMacroFmeasure
-				: PLTEnsembleBoostedDefaultValues.preferMacroFmeasure;
+				: PLTEnsembleBoostedWithThresholdDefaultValues.preferMacroFmeasure;
 	}
 
 	/**
@@ -98,7 +69,7 @@ public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguratio
 	 */
 	public boolean isToAggregateByMajorityVote() {
 		return isToAggregateByMajorityVote != null ? isToAggregateByMajorityVote
-				: PLTEnsembleBoostedDefaultValues.isToAggregateByMajorityVote;
+				: PLTEnsembleBoostedWithThresholdDefaultValues.isToAggregateByMajorityVote;
 	}
 
 	/**
@@ -109,11 +80,36 @@ public class PLTEnsembleBoostedInitConfiguration extends LearnerInitConfiguratio
 		this.isToAggregateByMajorityVote = isToAggregateByMajorityVote;
 	}
 
+	public boolean isToAggregateByLambdaCW() {
+		return isToAggregateByLambdaCW != null ? isToAggregateByLambdaCW
+				: PLTEnsembleBoostedWithThresholdDefaultValues.isToAggregateByLambdaCW;
+	}
+
+	public void setToAggregateByLambdaCW(boolean isToAggregateByLambdaCW) {
+		this.isToAggregateByLambdaCW = isToAggregateByLambdaCW;
+	}
+
+	/**
+	 * @return the defaultEpochs
+	 */
+	public int getMinEpochs() {
+		return minEpochs != null ? minEpochs : PLTEnsembleBoostedWithThresholdDefaultValues.minEpochs;
+	}
+
+	/**
+	 * @param defaultEpochs
+	 *            the defaultEpochs to set
+	 */
+	public void setDefaultEpochs(int defaultEpochs) {
+		this.minEpochs = defaultEpochs;
+	}
+
+	
 	/**
 	 * @return the kSlack
 	 */
 	public int getkSlack() {
-		return kSlack != null ? kSlack : PLTEnsembleBoostedDefaultValues.kSlack;
+		return kSlack != null ? kSlack : PLTEnsembleBoostedWithThresholdDefaultValues.kSlack;
 	}
 
 	/**

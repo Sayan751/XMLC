@@ -377,11 +377,6 @@ public abstract class AbstractLearner implements Serializable {
 		thresholdTuner
 				.getTunedThresholdsSparse(createTuningData(instance))
 				.forEach((label, threshold) -> setThreshold(label, threshold));
-		// Map<Integer, Double> sparseThresholds = thresholdTuner
-		// .getTunedThresholdsSparse(createTuningData(instance));
-		// for (Entry<Integer, Double> entry : sparseThresholds.entrySet()) {
-		// setThreshold(entry.getKey(), entry.getValue());
-		// }
 	}
 
 	/**
@@ -446,7 +441,8 @@ public abstract class AbstractLearner implements Serializable {
 				: Stats.meanOf(isPrequential ? prequentialFmeasures : fmeasures);
 	}
 
-	protected double getFmeasureForInstance(Instance instance, boolean isToPublishFmeasure, boolean isPrequential) {
+	protected double getFmeasureForInstance(Instance instance, boolean isToPublishFmeasure, boolean isPrequential,
+			boolean returnTopKFm) {
 
 		List<Integer> truePositives = Ints.asList(instance.y);
 
@@ -483,13 +479,17 @@ public abstract class AbstractLearner implements Serializable {
 
 			onInstanceProcessed(new InstanceProcessedEventArgs(instance, fmeasure, topkFmeasure, isPrequential));
 
-			return isToComputeFmeasureOnTopK ? topkFmeasure : fmeasure;
+			return returnTopKFm ? topkFmeasure : fmeasure;
 
 		} else {
-			return computeFmeasure(truePositives, isToComputeFmeasureOnTopK
+			return computeFmeasure(truePositives, returnTopKFm
 					? new HashSet<Integer>(Ints.asList(getTopkLabels(instance.x, defaultK)))
 					: getPositiveLabels(instance.x));
 		}
+	}
+
+	protected double getFmeasureForInstance(Instance instance, boolean isToPublishFmeasure, boolean isPrequential) {
+		return getFmeasureForInstance(instance, isToPublishFmeasure, isPrequential, isToComputeFmeasureOnTopK);
 	}
 
 	protected double getFmeasureForInstance(Instance instance) {

@@ -6,9 +6,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Properties;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math3.analysis.function.Sigmoid;
 import org.slf4j.Logger;
@@ -870,5 +872,60 @@ public class PLT extends AbstractLearner {
 
 		// logger.info("Top k positive labels: " + positiveLabels);
 		return positiveLabels;
+	}
+
+	/**
+	 * Provides top k labels and estimates.
+	 * 
+	 * <br/>
+	 * <b>Note:</b> This new method can enables putting labels with exactly same
+	 * posterior estimates in the final output set, unlike
+	 * {@link PLT#getTopKEstimates(AVPair[], int)}, where this is not possible.
+	 * 
+	 * @param x
+	 *            Feature vector.
+	 * @param k
+	 *            Size of predicion set.
+	 */
+	public List<EstimatePair> getTopKEstimatesNew(AVPair[] x, int k) {
+
+		Set<EstimatePair> positiveLabels = new HashSet<EstimatePair>();
+
+		// int foundTop = 0;
+
+		NodeComparatorPLT nodeComparator = new NodeComparatorPLT();
+
+		PriorityQueue<NodePLT> queue = new PriorityQueue<NodePLT>(11, nodeComparator);
+
+		queue.add(new NodePLT(tree.getRootIndex(), 1.0));
+
+		while (!queue.isEmpty()) {// && (foundTop < k)
+
+			NodePLT node = queue.poll();
+
+			double currentP = node.p;
+
+			if (!this.tree.isLeaf(node.treeIndex)) {
+
+				for (int childNode : this.tree.getChildNodes(node.treeIndex)) {
+					queue.add(new NodePLT(childNode, currentP * getPartialPosteriors(x, childNode)));
+				}
+
+			} else {
+
+				int labelIndex = this.tree.getLabelIndex(node.treeIndex);
+				/*Assumption: label index must be greater than or equal to 0.*/
+				if (labelIndex > -1) {
+					positiveLabels.add(new EstimatePair(labelIndex, currentP));
+					// foundTop++;
+				}
+
+			}
+		}
+
+		// logger.info("Top k positive labels: " + positiveLabels);
+		return positiveLabels.stream()
+				.sorted()
+				.collect(Collectors.toList());
 	}
 }

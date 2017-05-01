@@ -50,13 +50,27 @@ public class Constants {
 	public static class PLTEnsembleBoostedDefaultValues {
 		public static final int ensembleSize = 10;
 		public static final int minBranchingFactor = 2;
-		public static final int maxBranchingFactor = 5;
+		public static final int maxBranchingFactor = 10;
 		public static final double fZero = 0.001;
 		public static final int minEpochs = 30;
 		public static final boolean isToAggregateByMajorityVote = false;
 		public static final boolean preferMacroFmeasure = true;
 		public static final double minAlpha = 0.4;
 		public static final double maxAlpha = 1;
+		public static final int kSlack = 0;
+	}
+
+	public static class PLTEnsembleBoostedWithThresholdDefaultValues {
+		public static final int ensembleSize = 10;
+		public static final int minBranchingFactor = 2;
+		public static final int maxBranchingFactor = 10;
+		public static final boolean isToAggregateByMajorityVote = false;
+		public static final boolean isToAggregateByLambdaCW = true;
+		public static final boolean preferMacroFmeasure = true;
+		public static final double minAlpha = 0.4;
+		public static final double maxAlpha = 1;
+		public static final int minEpochs = 1;
+		public static final int kSlack = 0;
 	}
 
 	public static class PLTDefaultValues {
