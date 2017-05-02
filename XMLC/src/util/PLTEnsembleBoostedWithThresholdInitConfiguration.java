@@ -90,21 +90,20 @@ public class PLTEnsembleBoostedWithThresholdInitConfiguration extends LearnerIni
 	}
 
 	/**
-	 * @return the defaultEpochs
+	 * @return the minEpochs
 	 */
 	public int getMinEpochs() {
 		return minEpochs != null ? minEpochs : PLTEnsembleBoostedWithThresholdDefaultValues.minEpochs;
 	}
 
 	/**
-	 * @param defaultEpochs
+	 * @param minEpochs
 	 *            the defaultEpochs to set
 	 */
-	public void setDefaultEpochs(int defaultEpochs) {
-		this.minEpochs = defaultEpochs;
+	public void setMinEpochs(int minEpochs) {
+		this.minEpochs = minEpochs;
 	}
 
-	
 	/**
 	 * @return the kSlack
 	 */

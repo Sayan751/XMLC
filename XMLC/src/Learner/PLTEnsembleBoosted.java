@@ -1,9 +1,8 @@
 package Learner;
 
+import static java.lang.Math.ceil;
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
-import static java.lang.Math.round;
-import static java.lang.Math.toIntExact;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -234,7 +233,7 @@ public class PLTEnsembleBoosted extends AbstractLearner {
 			fm = fZero;
 
 		double alpha = 0.5 * log((1 - fm) / fm);
-		epochs = toIntExact(round(minEpochs * exp(alpha)));
+		epochs = (int) ceil(minEpochs * exp(alpha));
 
 		PoissonDistribution pois = new PoissonDistribution(epochs);
 		epochs = pois.sample();
