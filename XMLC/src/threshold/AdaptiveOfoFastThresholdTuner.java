@@ -214,6 +214,9 @@ public class AdaptiveOfoFastThresholdTuner extends ThresholdTuner implements IAd
 
 		int size = aThresholdNumerators.size();
 
+		if (size < 1)
+			return 0;
+
 		double accumulated = 0;
 		for (Entry<Integer, Integer> entry : aThresholdNumerators.entrySet()) {
 			accumulated += (double) entry.getValue() / (double) bThresholdDenominators.get(entry.getKey());

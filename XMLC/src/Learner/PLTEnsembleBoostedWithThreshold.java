@@ -309,7 +309,7 @@ public class PLTEnsembleBoostedWithThreshold extends AbstractLearner {
 
 		pltCache.forEach(
 				pltCacheEntry -> predictions.add(learnerRepository.read(pltCacheEntry.learnerId, AdaptivePLT.class)
-						.getTopKEstimatesNew(x, k)));
+						.getTopKEstimatesComplete(x, k)));
 		return predictions;
 	}
 

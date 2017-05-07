@@ -887,7 +887,7 @@ public class PLT extends AbstractLearner {
 	 * @param k
 	 *            Size of predicion set.
 	 */
-	public List<EstimatePair> getTopKEstimatesNew(AVPair[] x, int k) {
+	public List<EstimatePair> getTopKEstimatesComplete(AVPair[] x, int k) {
 
 		Set<EstimatePair> positiveLabels = new HashSet<EstimatePair>();
 

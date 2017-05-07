@@ -3,7 +3,7 @@
   associations="true" dependencies="true" nesting-relationships="true" router="FAN">  
   <class id="1" language="java" name="Learner.AbstractLearner" project="XMLC" 
     file="/XMLC/XMLC/src/Learner/AbstractLearner.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="53" width="119" x="356" y="37"/>    
+    <position height="53" width="119" x="677" y="37"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
@@ -12,7 +12,7 @@
   </class>  
   <class id="2" language="java" name="Learner.PLT" project="XMLC" file="/XMLC/XMLC/src/Learner/PLT.java" binary="false" 
     corner="BOTTOM_RIGHT">    
-    <position height="53" width="87" x="250" y="223"/>    
+    <position height="53" width="87" x="548" y="223"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
@@ -21,7 +21,7 @@
   </class>  
   <class id="3" language="java" name="Learner.AdaptivePLT" project="XMLC" file="/XMLC/XMLC/src/Learner/AdaptivePLT.java" 
     binary="false" corner="BOTTOM_RIGHT">    
-    <position height="53" width="94" x="250" y="316"/>    
+    <position height="53" width="94" x="393" y="316"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
@@ -30,7 +30,7 @@
   </class>  
   <class id="4" language="java" name="Learner.PLTEnsembleBoosted" project="XMLC" 
     file="/XMLC/XMLC/src/Learner/PLTEnsembleBoosted.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="53" width="148" x="41" y="223"/>    
+    <position height="53" width="148" x="508" y="130"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
@@ -39,7 +39,7 @@
   </class>  
   <class id="5" language="java" name="Learner.PLTEnsembleBoostedWithThreshold" project="XMLC" 
     file="/XMLC/XMLC/src/Learner/PLTEnsembleBoostedWithThreshold.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="53" width="231" x="377" y="223"/>    
+    <position height="53" width="231" x="237" y="130"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
@@ -48,7 +48,7 @@
   </class>  
   <class id="6" language="java" name="Learner.PLTAdaptiveEnsemble" project="XMLC" 
     file="/XMLC/XMLC/src/Learner/PLTAdaptiveEnsemble.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="53" width="149" x="186" y="130"/>    
+    <position height="53" width="149" x="48" y="130"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
@@ -57,84 +57,156 @@
   </class>  
   <class id="7" language="java" name="IO.DataManager" project="XMLC" file="/XMLC/XMLC/src/IO/DataManager.java" 
     binary="false" corner="BOTTOM_RIGHT">    
-    <position height="53" width="102" x="365" y="409"/>    
+    <position height="53" width="102" x="508" y="409"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="false" package="false" protected="false" private="false" static="true"/>      
       <operations public="false" package="false" protected="false" private="false" static="true"/>    
     </display>  
   </class>  
-  <generalization id="8">    
-    <bendpoint x="365" y="130"/>    
+  <class id="8" language="java" name="util.PLTPropertiesForCache" project="XMLC" 
+    file="/XMLC/XMLC/src/util/PLTPropertiesForCache.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="177" y="252"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
+      sort-features="false" accessors="true" visibility="true">      
+      <attributes public="false" package="false" protected="false" private="false" static="true"/>      
+      <operations public="false" package="false" protected="false" private="false" static="true"/>    
+    </display>  
+  </class>  
+  <class id="9" language="java" name="util.PLTCachePropertiesForBoosting" project="XMLC" 
+    file="/XMLC/XMLC/src/util/PLTCachePropertiesForBoosting.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="240" y="366"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
+      sort-features="false" accessors="true" visibility="true">      
+      <attributes public="false" package="false" protected="false" private="false" static="true"/>      
+      <operations public="false" package="false" protected="false" private="false" static="true"/>    
+    </display>  
+  </class>  
+  <dependency id="10">    
+    <bendpoint x="459" y="223"/>    
+    <end type="SOURCE" refId="4"/>    
+    <end type="TARGET" refId="3"/>  
+  </dependency>  
+  <association id="11">    
+    <end type="SOURCE" refId="6" navigable="false">      
+      <attribute id="12" name="scoredLearners"/>      
+      <multiplicity id="13" minimum="0" maximum="2147483647"/>    
+    </end>    
+    <end type="TARGET" refId="8" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <generalization id="14">    
+    <end type="SOURCE" refId="9"/>    
+    <end type="TARGET" refId="8"/>  
+  </generalization>  
+  <generalization id="15">    
+    <end type="SOURCE" refId="4"/>    
+    <end type="TARGET" refId="1"/>  
+  </generalization>  
+  <dependency id="16">    
+    <end type="SOURCE" refId="5"/>    
+    <end type="TARGET" refId="8"/>  
+  </dependency>  
+  <generalization id="17">    
+    <bendpoint x="707" y="130"/>    
     <end type="SOURCE" refId="2"/>    
     <end type="TARGET" refId="1"/>  
   </generalization>  
-  <generalization id="9">    
-    <bendpoint x="386" y="130"/>    
-    <end type="SOURCE" refId="5"/>    
-    <end type="TARGET" refId="1"/>  
-  </generalization>  
-  <generalization id="10">    
-    <end type="SOURCE" refId="6"/>    
-    <end type="TARGET" refId="1"/>  
-  </generalization>  
-  <dependency id="11">    
-    <end type="SOURCE" refId="5"/>    
-    <end type="TARGET" refId="3"/>  
-  </dependency>  
-  <generalization id="12">    
-    <end type="SOURCE" refId="3"/>    
-    <end type="TARGET" refId="2"/>  
-  </generalization>  
-  <dependency id="13">    
-    <end type="SOURCE" refId="6"/>    
-    <end type="TARGET" refId="2"/>  
-  </dependency>  
-  <dependency id="14">    
-    <end type="SOURCE" refId="3"/>    
+  <dependency id="18">    
+    <bendpoint x="517" y="223"/>    
+    <bendpoint x="517" y="316"/>    
+    <end type="SOURCE" refId="4"/>    
     <end type="TARGET" refId="7"/>  
   </dependency>  
-  <dependency id="15">    
-    <end type="SOURCE" refId="4"/>    
-    <end type="TARGET" refId="3"/>  
+  <dependency id="19">    
+    <bendpoint x="728" y="130"/>    
+    <bendpoint x="728" y="223"/>    
+    <bendpoint x="728" y="316"/>    
+    <end type="SOURCE" refId="1"/>    
+    <end type="TARGET" refId="7"/>  
   </dependency>  
-  <generalization id="16">    
-    <bendpoint x="155" y="130"/>    
-    <end type="SOURCE" refId="4"/>    
-    <end type="TARGET" refId="1"/>  
-  </generalization>  
-  <association id="17">    
-    <bendpoint x="374" y="316"/>    
+  <dependency id="20">    
+    <bendpoint x="686" y="130"/>    
+    <end type="SOURCE" refId="1"/>    
+    <end type="TARGET" refId="2"/>  
+  </dependency>  
+  <dependency id="21">    
+    <end type="SOURCE" refId="6"/>    
+    <end type="TARGET" refId="2"/>  
+  </dependency>  
+  <association id="22">    
+    <bendpoint x="277" y="223"/>    
+    <end type="SOURCE" refId="5" navigable="false">      
+      <attribute id="23" name="pltCache"/>      
+      <multiplicity id="24" minimum="0" maximum="2147483647"/>    
+    </end>    
+    <end type="TARGET" refId="9" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <association id="25">    
+    <bendpoint x="538" y="316"/>    
     <end type="SOURCE" refId="2" navigable="false">      
-      <attribute id="18" name="traindata"/>      
-      <multiplicity id="19" minimum="0" maximum="1"/>    
+      <attribute id="26" name="traindata">        
+        <position height="0" width="0" x="0" y="0"/>      
+      </attribute>      
+      <multiplicity id="27" minimum="0" maximum="1">        
+        <position height="0" width="0" x="0" y="0"/>      
+      </multiplicity>    
     </end>    
     <end type="TARGET" refId="7" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <dependency id="20">    
-    <bendpoint x="219" y="223"/>    
-    <bendpoint x="219" y="316"/>    
-    <end type="SOURCE" refId="6"/>    
-    <end type="TARGET" refId="7"/>  
-  </dependency>  
-  <dependency id="21">    
-    <bendpoint x="395" y="316"/>    
+  <generalization id="28">    
+    <end type="SOURCE" refId="5"/>    
+    <end type="TARGET" refId="1"/>  
+  </generalization>  
+  <association id="29">    
+    <end type="SOURCE" refId="4" navigable="false">      
+      <attribute id="30" name="pltCache"/>      
+      <multiplicity id="31" minimum="0" maximum="2147483647"/>    
+    </end>    
+    <end type="TARGET" refId="8" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <dependency id="32">    
+    <bendpoint x="362" y="223"/>    
+    <bendpoint x="362" y="316"/>    
     <end type="SOURCE" refId="5"/>    
     <end type="TARGET" refId="7"/>  
   </dependency>  
-  <dependency id="22">    
-    <bendpoint x="638" y="130"/>    
-    <bendpoint x="638" y="223"/>    
-    <bendpoint x="638" y="316"/>    
-    <end type="SOURCE" refId="1"/>    
+  <dependency id="33">    
+    <bendpoint x="57" y="223"/>    
+    <bendpoint x="57" y="316"/>    
+    <bendpoint x="118" y="395"/>    
+    <bendpoint x="238" y="441"/>    
+    <end type="SOURCE" refId="6"/>    
     <end type="TARGET" refId="7"/>  
   </dependency>  
-  <dependency id="23">    
-    <bendpoint x="198" y="316"/>    
-    <end type="SOURCE" refId="4"/>    
+  <association id="34">    
+    <end type="SOURCE" refId="6" navigable="false">      
+      <attribute id="35" name="pltCache"/>      
+      <multiplicity id="36" minimum="0" maximum="2147483647"/>    
+    </end>    
+    <end type="TARGET" refId="8" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <dependency id="37">    
+    <bendpoint x="383" y="223"/>    
+    <end type="SOURCE" refId="5"/>    
+    <end type="TARGET" refId="3"/>  
+  </dependency>  
+  <dependency id="38">    
+    <end type="SOURCE" refId="3"/>    
     <end type="TARGET" refId="7"/>  
   </dependency>  
+  <generalization id="39">    
+    <end type="SOURCE" refId="3"/>    
+    <end type="TARGET" refId="2"/>  
+  </generalization>  
+  <generalization id="40">    
+    <end type="SOURCE" refId="6"/>    
+    <end type="TARGET" refId="1"/>  
+  </generalization>  
   <classifier-display autosize="true" stereotype="true" package="true" initial-value="true" signature="true" 
     sort-features="false" accessors="true" visibility="true">    
     <attributes public="false" package="false" protected="false" private="false" static="true"/>    
