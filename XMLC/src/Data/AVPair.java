@@ -11,4 +11,9 @@ public class AVPair {
 		this.index = index;
 		this.value = value;
 	}
+
+	@Override
+	public String toString() {
+		return "(" + index + ", " + value + ")";
+	}
 }
