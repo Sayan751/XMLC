@@ -119,7 +119,7 @@ public class AdaptivePLT extends PLT {
 		adjustTuner(label);
 
 		logger.info("Tree structure adapted.");
-		// logger.info(tree.toString());
+		logger.info(tree.toString());
 
 		positiveLabelsAndPosteriors.clear();
 		return newLeafIndex;

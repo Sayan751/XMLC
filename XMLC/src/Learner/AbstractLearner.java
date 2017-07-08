@@ -391,12 +391,16 @@ public abstract class AbstractLearner implements Serializable {
 		case OfoFast:
 		case AdaptiveOfoFast:
 			List<HashSet<Integer>> trueLabels = new ArrayList<HashSet<Integer>>();
-			List<HashSet<Integer>> predictedLabels = new ArrayList<HashSet<Integer>>();
+			List<HashSet<Integer>> predictedLabels = new ArrayList<HashSet<Integer>>();			
+			
 			while (data.hasNext()) {
 				Instance instance = data.getNextInstance();
 				trueLabels.add(new HashSet<Integer>(Ints.asList(instance.y)));
 				predictedLabels.add(getPositiveLabels(instance.x));
 			}
+			
+			logger.info("Before tuning threshold. Ground truth" + trueLabels + ", predictions: " + predictedLabels);
+			
 			retVal.put(ThresholdTuningDataKeys.trueLabels, trueLabels);
 			retVal.put(ThresholdTuningDataKeys.predictedLabels, predictedLabels);
 			break;

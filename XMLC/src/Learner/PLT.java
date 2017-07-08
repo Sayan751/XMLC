@@ -233,6 +233,13 @@ public class PLT extends AbstractLearner {
 		this.scalararray = new double[this.t];
 		Arrays.fill(this.Tarray, 1);
 		Arrays.fill(this.scalararray, 1.0);
+
+		logger.info("Tree: " + (tree instanceof AdaptiveTree ? tree : new AdaptiveTree(tree, treeType, shuffleLabels)));
+		logger.info("Weights: " + Arrays.toString(w));
+		logger.info("Thresholds: " + Arrays.toString(thresholds));
+		logger.info("Biases: " + Arrays.toString(bias));
+		logger.info("Scalar array: " + Arrays.toString(scalararray));
+		logger.info("Tarray: " + Arrays.toString(Tarray));
 	}
 
 	protected void initializeNumberOfLabels(DataManager data) {
@@ -388,6 +395,12 @@ public class PLT extends AbstractLearner {
 				totalTrainTime += getStopwatch().elapsed(TimeUnit.MICROSECONDS);
 			}
 		}
+
+		logger.info("Weights: " + Arrays.toString(w));
+		logger.info("Thresholds: " + Arrays.toString(thresholds));
+		logger.info("Biases: " + Arrays.toString(bias));
+		logger.info("Scalar array: " + Arrays.toString(scalararray));
+		logger.info("Tarray: " + Arrays.toString(Tarray));
 
 		evaluate(data, false);
 	}
