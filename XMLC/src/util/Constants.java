@@ -73,6 +73,21 @@ public class Constants {
 		public static final int kSlack = 0;
 	}
 
+	public static class PLTEnsembleBoostedGenericDefaultValues {
+		public static final int ensembleSize = 10;
+		public static final int minBranchingFactor = 2;
+		public static final int maxBranchingFactor = 10;
+		public static final boolean isToAggregateByMajorityVote = false;
+		public static final boolean isToAggregateByLambdaCW = true;
+		public static final boolean preferMacroFmeasure = true;
+		public static final double minAlpha = 0.4;
+		public static final double maxAlpha = 1;
+		public static final int minEpochs = 1;
+		public static final int kSlack = 0;
+		public static final double fZero = 0.001;
+		public static final BoostingStrategy boostingStrategy = BoostingStrategy.fluent;
+	}
+
 	public static class PLTDefaultValues {
 		public static final double gamma = 1.0;
 		public static final double lambda = 1.0;
